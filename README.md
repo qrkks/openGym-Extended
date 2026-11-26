@@ -1,10 +1,10 @@
 # openGym Extended
 
 Plan, log, and review strength training, sports, and recovery in one app.
-openGym Extended is an independently maintained fork of
+openGym Extended is an independently maintained edition of
 [DuarteSantos8/openGym](https://github.com/DuarteSantos8/openGym).
 
-[openGym Extended releases](https://github.com/qrkks/openGym/releases) · [Changelog](CHANGELOG.md) · [Self-host from source](#quick-start)
+[openGym Extended releases](https://github.com/qrkks/openGym-Extended/releases) · [Changelog](CHANGELOG.md) · [Self-host from source](#quick-start)
 
 ## What's in Extended
 
@@ -20,19 +20,21 @@ openGym Extended is an independently maintained fork of
 
 ## Install on Android
 
-Download the signed APK from the [latest Extended release](https://github.com/qrkks/openGym/releases/latest).
-If you already use OpenGym Personal, download and install the first Extended APK over it to keep
-your records. After that upgrade, open **Settings → About & updates** to check for new Extended
-releases. The fork and upstream openGym install side by side.
+Download the signed APK from the [latest Extended release](https://github.com/qrkks/openGym-Extended/releases/latest).
+If you installed OpenGym Personal or Extended from the
+[previous repository](https://github.com/qrkks/openGym/releases), manually install the next APK
+over your existing app to keep your records.
+After that upgrade, open **Settings → About & updates** to check for new Extended releases.
+Extended and upstream openGym install side by side.
 
-**安卓安装** 从 [最新发布](https://github.com/qrkks/openGym/releases/latest) 下载 APK。旧版
-OpenGym Personal 用户请手动覆盖安装一次，原有记录会保留。之后可在 **设置 → 关于与更新** 检查新版。
+**安卓安装** 从 [最新发布](https://github.com/qrkks/openGym-Extended/releases/latest) 下载 APK。旧版
+OpenGym Personal 或从旧仓库安装的 Extended 用户请手动覆盖安装一次，原有记录会保留。之后可在 **设置 → 关于与更新** 检查新版。
 
 ## Try the web app locally
 
 ```bash
-git clone https://github.com/qrkks/openGym.git
-cd openGym/frontend
+git clone https://github.com/qrkks/openGym-Extended.git
+cd openGym-Extended/frontend
 npm ci
 npm run dev
 ```
@@ -192,8 +194,8 @@ The full list of what changed release by release is in the [changelog](CHANGELOG
 You need [Docker](https://docs.docker.com/get-docker/) with Compose.
 
 ```bash
-git clone https://github.com/qrkks/openGym.git
-cd openGym
+git clone https://github.com/qrkks/openGym-Extended.git
+cd openGym-Extended
 cp .env.example .env
 docker compose up -d --build --pull never
 ```
@@ -249,7 +251,7 @@ variable. The [self-hosting guide](docs/SELF_HOSTING.md) covers every option in 
 
 ## Phone app
 
-See [openGym Extended releases](https://github.com/qrkks/openGym/releases) for builds of this fork.
+See [openGym Extended releases](https://github.com/qrkks/openGym-Extended/releases) for builds of this edition.
 
 The original openGym phone apps are built with Capacitor. Use them on their own (everything stays on
 the phone, no account) or connect them to your server and sync. The distribution channels below

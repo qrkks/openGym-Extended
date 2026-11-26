@@ -14,7 +14,7 @@ import { MOBILE } from './mobile.js'
 import { APK_VARIANTS, APK_VARIANT } from './apk-variant.js'
 
 const EXTENDED = import.meta.env.VITE_EXTENDED_ANDROID === '1'
-const REPO = EXTENDED ? 'qrkks/openGym' : 'DuarteSantos8/openGym'
+const REPO = EXTENDED ? 'qrkks/openGym-Extended' : 'DuarteSantos8/openGym'
 const LATEST_URL = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
 

@@ -140,20 +140,20 @@ describe('extended Android releases', () => {
 
   const version = `${__APP_VERSION__.split('+')[0]}.1`
   const assetName = `openGym-Extended-${version}.apk`
-  const download = `https://github.com/qrkks/openGym/releases/download/extended-v${version}/`
+  const download = `https://github.com/qrkks/openGym-Extended/releases/download/extended-v${version}/`
   const assets = [assetName, assetName + '.sha256'].map(name => ({ name, browser_download_url: download + name }))
   const serve = (tag_name, releaseAssets = assets) => vi.stubGlobal('fetch', vi.fn(async () => ({
     ok: true, json: async () => ({ tag_name, assets: releaseAssets }),
   })))
 
-  it('uses the fork and offers a newer extended revision with a matching APK and checksum', async () => {
+  it('uses the Extended repository and offers a newer revision with a matching APK and checksum', async () => {
     serve(`extended-v${version}`, [{ name: 'other.apk' }, ...assets])
     const { checkForUpdate, RELEASES_PAGE } = await import('./update.js')
-    expect(RELEASES_PAGE).toBe('https://github.com/qrkks/openGym/releases/latest')
+    expect(RELEASES_PAGE).toBe('https://github.com/qrkks/openGym-Extended/releases/latest')
     expect(await checkForUpdate()).toMatchObject({
       hasUpdate: true, latestVersion: version, apkUrl: download + assetName, hashUrl: download + assetName + '.sha256',
     })
-    expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/qrkks/openGym/releases/latest')
+    expect(fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/qrkks/openGym-Extended/releases/latest')
   })
 
   it.each(['v99.0.0', 'personal-v99.0.0.1'])('ignores a newer tag outside the Extended channel (%s)', async (tag) => {

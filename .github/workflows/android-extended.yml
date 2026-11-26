@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'qrkks/openGym' && github.ref == 'refs/heads/main'
+    if: github.repository == 'qrkks/openGym-Extended' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -47,8 +47,8 @@ jobs:
         run: |
           base=$(node -p 'require("./package.json").version')
           [[ "$base" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          # Continue after Android 1.4.5.6, whose version code was 1000006.
-          revision=$((6 + GITHUB_RUN_NUMBER))
+          # Continue after the last release from the old repo, 1.4.5.7 (version code 1000007).
+          revision=$((7 + GITHUB_RUN_NUMBER))
           echo "value=$base.$revision" >> "$GITHUB_OUTPUT"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
       - name: Install frontend dependencies and run tests
