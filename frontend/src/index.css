@@ -3309,8 +3309,8 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 .home-workout-main .ss{display:block}
 .home-day-start{gap:8px;flex:none}
 .home-day-action{min-height:36px;justify-content:center;padding-inline:10px;flex:none}
-.home-day-done{color:var(--green);background:color-mix(in srgb,var(--green) 16%,transparent)}
-.home-day-resume{color:var(--orange-ink);background:color-mix(in srgb,var(--orange) 16%,transparent)}
+.home-day-done{color:var(--green-ink);background:rgba(48,209,88,.16);background:color-mix(in srgb,var(--green) 16%,transparent)}
+.home-day-resume{color:var(--orange-ink);background:rgba(255,159,10,.16);background:color-mix(in srgb,var(--orange) 16%,transparent)}
 .home-day-rows,.home-sport-rows,.home-recovery-rows,.home-scheduled-workout{margin-top:8px;background:var(--surface-2);border-radius:var(--r)}
 :is(.home-day-rows,.home-sport-rows,.home-recovery-rows) .lrow+.lrow{border-top:var(--hair) solid var(--sep)}
 .home-quick-actions{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;margin-top:4px}

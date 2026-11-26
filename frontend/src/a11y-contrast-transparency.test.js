@@ -131,8 +131,15 @@ describe('status colours as words use their ink shade (light theme, QA 1.4.5)', 
   it('the running clock under the tab bar\'s Start button', () => {
     expect(rule(read('index.css'), '#tabbar button.start.rec span')).toContain('color:var(--orange-ink)')
   })
-  it('Home\'s Resume tag and the balance check\'s verdicts', () => {
-    expect(src('views/Home.jsx')).toMatch(/className="tag" style=\{\{ color: 'var\(--orange-ink\)'/)
+  it('Home workout status actions use the ink colours', () => {
+    const home = src('views/Home.jsx')
+    const css = read('index.css')
+    expect(home).toContain('className="tag home-day-action home-day-resume"')
+    expect(rule(css, '.home-day-resume')).toContain('color:var(--orange-ink)')
+    expect(home).toContain('className="tag home-day-done"')
+    expect(rule(css, '.home-day-done')).toContain('color:var(--green-ink)')
+  })
+  it('the balance check\'s verdicts use the ink colours', () => {
     const sb = src('views/StructuralBalance.jsx')
     for (const ink of ['--green-ink', '--gold-ink', '--red-ink']) expect(sb).toContain(`var(${ink})`)
     expect(sb).not.toMatch(/balanced: 'var\(--green\)'/)
