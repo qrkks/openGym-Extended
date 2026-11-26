@@ -511,12 +511,18 @@ export function matchExercise(e, query) {
   return matchTokens(e, tokens, new Set(tokens))
 }
 
+const exerciseIdQuery = query => String(query ?? '').trim().normalize('NFKC').toLowerCase()
+
 // Search a list, exact hits first: a token that appears literally in at least one exercise is
 // taken at its word for the whole list, and only a token with no exact hit anywhere ("bnech",
 // "dumbell", "wirst") is allowed the typo tolerance. Otherwise a correctly spelled query such
 // as "squat" or "clean" would also drag in "squad" and "lean", and since the callers keep
 // catalogue order those strays would land ahead of the real matches (QA C26).
 export function searchExercises(list, query) {
+  // Pasted IDs are exact, including the catalogue's leading zeros.
+  const id = exerciseIdQuery(query)
+  const exact = id && list.find(e => String(e.id ?? '').toLowerCase() === id)
+  if (exact) return [exact]
   const tokens = queryTokens(query)
   if (!tokens.length) return list
   resetNearCache()
@@ -659,6 +665,8 @@ function rankByRelevance(found, tokens) {
 // similar. For the "Similar exercises" section under the results, so a search almost never ends
 // on "No match". `exclude` holds what the exact search already listed. Best first, at most `limit`.
 export function similarExercises(list, query, exclude = [], limit = 30) {
+  const id = exerciseIdQuery(query)
+  if (id && exclude.some(e => String(e.id ?? '').toLowerCase() === id)) return []
   const tokens = queryTokens(query)
   if (!tokens.length) return []
   resetNearCache()

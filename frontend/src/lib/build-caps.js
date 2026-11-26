@@ -4,7 +4,7 @@
 // Android refuses every connection it would try. So the page does not offer what would need one:
 // no server to connect or sync with (and so no sign-in, OIDC, trainer, API tokens or MCP, no
 // community library, no webhooks, Strava or calendar feed), no Coach, no WebDAV backup, no
-// "Watch on YouTube", no update check, no Hevy import, no gym search or map tiles. Everything that
+// no exercise tutorial search, update check, Hevy import, gym search or map tiles. Everything that
 // works on the phone alone stays: logging, plans, stats, backups to a file, Health Connect, the
 // reminders, widgets, the gym reminder from where you stand.
 //

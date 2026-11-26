@@ -11,7 +11,7 @@
  *   - a stamped service worker (no `__BUILD__` left in sw.js),
  *   - every exercise still and animation the bundle asks for, by name (check-app-media.mjs, #962).
  *
- * Usage: node scripts/check-mobile-bundle.mjs [frontend dir]   — exit code 1 on any problem. */
+ * Usage: node scripts/check-mobile-bundle.mjs [--android | frontend dir] — exit code 1 on any problem. */
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,38 +23,44 @@ const COPIES = [
   'ios/App/App/public',
 ]
 
-export function checkCopy(dir) {
+export function checkCopy(dir, label = dir) {
   const problems = []
   const html = join(dir, 'index.html')
-  if (!existsSync(html)) return [`${dir}: no index.html`]
+  if (!existsSync(html)) return [`${label}: no index.html`]
   const text = readFileSync(html, 'utf8')
   if (!/<meta\s+name="opengym-flavor"\s+content="mobile"/.test(text))
-    problems.push(`${dir}/index.html is not the mobile build (no opengym-flavor meta) — another build ran into dist/?`)
+    problems.push(`${label}/index.html is not the mobile build (no opengym-flavor meta) — another build ran into dist/?`)
   for (const [, ref] of text.matchAll(/(?:src|href)="\.?\/?(assets\/[^"]+\.(?:js|css))"/g))
-    if (!existsSync(join(dir, ref))) problems.push(`${dir}/index.html loads ${ref}, which is missing`)
+    if (!existsSync(join(dir, ref))) problems.push(`${label}/index.html loads ${ref}, which is missing`)
   const sw = join(dir, 'sw.js')
   if (existsSync(sw) && readFileSync(sw, 'utf8').includes('__BUILD__'))
-    problems.push(`${dir}/sw.js is not stamped (__BUILD__ left in it)`)
+    problems.push(`${label}/sw.js is not stamped (__BUILD__ left in it)`)
   return problems
 }
 
-export function checkMobileBundle(root) {
-  const copies = COPIES.map(rel => join(root, rel)).filter((dir, i) => i === 0 || existsSync(dir))
-  return copies.flatMap(checkCopy)
+function mobileCopies(root) {
+  return COPIES.filter((dir, i) => i === 0 || existsSync(join(root, dir)))
+}
+
+export function checkMobileBundle(root, copies = mobileCopies(root)) {
+  return copies.flatMap(dir => checkCopy(join(root, dir), dir))
 }
 
 /** The exercise media of every copy, against the catalogue (check-app-media.mjs). */
-export function checkMobileMedia(root, exdb) {
-  return COPIES.map(rel => join(root, rel)).filter(existsSync).flatMap(dir => checkAppMedia(dir, exdb))
+export function checkMobileMedia(root, exdb, copies = mobileCopies(root)) {
+  return copies.map(dir => join(root, dir)).filter(existsSync).flatMap(dir => checkAppMedia(dir, exdb))
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const root = resolve(process.argv[2] || join(dirname(fileURLToPath(import.meta.url)), '..'))
-  const problems = checkMobileBundle(root)
-  if (!problems.length) problems.push(...checkMobileMedia(root, await loadCatalogue()))
+  const androidOnly = process.argv[2] === '--android'
+  const frontend = join(dirname(fileURLToPath(import.meta.url)), '..')
+  const root = resolve(androidOnly ? frontend : process.argv[2] || frontend)
+  const copies = androidOnly ? COPIES.slice(0, 2) : mobileCopies(root)
+  const problems = checkMobileBundle(root, copies)
+  if (!problems.length) problems.push(...checkMobileMedia(root, await loadCatalogue(), copies))
   if (problems.length) {
     for (const p of problems) console.error('✗ ' + p)
     process.exit(1)
   }
-  console.log('Mobile bundle OK in ' + COPIES.filter(rel => existsSync(join(root, rel))).join(', ') + '.')
+  console.log('Mobile bundle OK in ' + copies.join(', ') + '.')
 }

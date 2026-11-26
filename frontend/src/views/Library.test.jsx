@@ -179,6 +179,13 @@ describe('Library similar exercises', () => {
     expect(names(host).slice(0, 5).some(n => /dumbbell.*curl/.test(n))).toBe(true)
   })
 
+  it('finds a single exercise by ID without showing similar exercises', () => {
+    const host = render()
+    search(host, '0025')
+    expect(names(host)).toEqual([EXDB.find(e => e.id === '0025').n])
+    expect(label(host)).toBeNull()
+  })
+
   it('lists similar ones under a short result list, without repeating a result', () => {
     const host = render()
     search(host, 'face pull')

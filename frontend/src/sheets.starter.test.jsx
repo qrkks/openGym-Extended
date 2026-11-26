@@ -27,6 +27,7 @@ function renderTop() {
 
 const rowFor = (host, name) => [...host.querySelectorAll('.item')].find(el => el.querySelector('.tt')?.textContent === name)
 const buttonFor = (host, label) => [...host.querySelectorAll('button')].find(b => b.textContent === label)
+const scheduleSwitch = host => host.querySelector('[role="switch"][aria-label="Also set the weekly schedule"]')
 
 // Opens the chooser and taps one of its rows.
 function choose(name) {
@@ -37,6 +38,7 @@ function choose(name) {
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  localStorage.removeItem('gym_starter_assign_week')
   useUI.setState({ sheets: [], toastMsg: '' })
   useStore.setState(s => ({
     S: { ...s.S, routines: [{ id: 'mine', name: 'My routine', emoji: 'star', ex: [] }], week: {}, active: null, equipProfiles: [], activeEquipId: null, equipFilterOn: false },
@@ -83,6 +85,56 @@ describe('starter plan chooser', () => {
     expect(S().routines.map(r => r.id)).toEqual(ids)
     expect(S().routines.filter(r => r.name === 'Upper A')).toHaveLength(1)
     expect(S().week).toEqual(week)
+  })
+
+  it('adds and reuses routines without assigning a weekly schedule when the switch is off', () => {
+    const week = { 1: ['mine'], 3: ['mine'], 6: ['mine'] }
+    useStore.setState(s => ({ S: { ...s.S, week } }))
+    const loadUnscheduled = initiallyOn => {
+      starterPlanSheet()
+      const host = renderTop()
+      const toggle = scheduleSwitch(host)
+      expect(toggle.getAttribute('aria-checked')).toBe(String(initiallyOn))
+      if (initiallyOn) act(() => toggle.click())
+      act(() => rowFor(host, 'Full Body').click())
+      expect(useUI.getState().sheets).toHaveLength(0)
+      expect(S().week).toEqual(week)
+    }
+    loadUnscheduled(true)
+    expect(S().routines.map(r => r.name)).toEqual(['My routine', 'Full Body A', 'Full Body B', 'Full Body C'])
+    expect(S().routines.slice(1).map(r => r.folder)).toEqual(['Full Body', 'Full Body', 'Full Body'])
+    expect(S().routines.slice(1).map(r => r.workoutLocation)).toEqual(['gym', 'gym', 'gym'])
+    act(() => useStore.getState().update(s => {
+      s.routines[1].folder = 'My favourites'
+      s.routines[1].workoutLocation = 'home'
+    }))
+    const ids = S().routines.map(r => r.id)
+    loadUnscheduled(false)
+    expect(S().routines.map(r => r.id)).toEqual(ids)
+    expect(S().routines[1]).toMatchObject({ folder: 'My favourites', workoutLocation: 'home' })
+  })
+
+  it('remembers scheduling once confirmed and ignores a cancelled change', () => {
+    useStore.setState(s => ({ S: { ...s.S, week: { 3: ['mine'] } } }))
+    starterPlanSheet()
+    let host = renderTop()
+    act(() => scheduleSwitch(host).click())
+    act(() => rowFor(host, 'Full Body').click())
+
+    for (const action of ['Cancel', 'Load plan']) {
+      starterPlanSheet()
+      host = renderTop()
+      const toggle = scheduleSwitch(host)
+      expect(toggle.getAttribute('aria-checked')).toBe('false')
+      act(() => toggle.click())
+      act(() => rowFor(host, 'Full Body').click())
+      const confirm = renderTop()
+      act(() => buttonFor(confirm, action).click())
+    }
+
+    starterPlanSheet()
+    expect(scheduleSwitch(renderTop()).getAttribute('aria-checked')).toBe('true')
+    expect(nameOn(3)).toBe('Full Body B')
   })
 
   it('asks first when a weekday the plan wants is already taken', () => {
@@ -178,6 +230,13 @@ describe('starter plan chooser, fitted to equipment', () => {
 })
 
 describe('loadStarterPlan', () => {
+  it.each(['home-bw', 'dumbbells', 'bands', 'hotel'])('defaults the %s plan to home', planId => {
+    expect(loadStarterPlan(planId, undefined, { assignWeek: false })).toBe(true)
+    const routines = S().routines.slice(1)
+    expect(routines.length).toBeGreaterThan(0)
+    expect(routines.every(r => r.workoutLocation === 'home')).toBe(true)
+  })
+
   it('two different plans add independent routines', () => {
     loadStarterPlan('ppl')
     const first = S().routines.slice(1).map(r => r.id)

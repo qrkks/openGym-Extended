@@ -36,6 +36,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BarIconsPlugin.class);
         registerPlugin(DeviceAuthPlugin.class);
         registerPlugin(OidcBrowserPlugin.class);
+        registerPlugin(ExerciseTutorialSearchPlugin.class);
         registerPlugin(AnimationPacksPlugin.class);
         registerPlugin(NudgeCheckPlugin.class);
         registerPlugin(GymReminderPlugin.class);

@@ -3,6 +3,7 @@ import { SPORTS, SPORT_ICON, SPORT_LABEL, activitiesOf, activityName } from '../
 import { MONTHS, fmtDate, fmtDateRange, fmtDur, fmtNum, todayISO, weekStartOf } from '../lib/format.js'
 import { t, tn } from '../lib/i18n.js'
 import { sportProgress, sportStatistics, sportTrend } from '../lib/sport-statistics.js'
+import { sessionClock } from '../lib/session-time.js'
 import SessionStatsPeriod from './SessionStatsPeriod.jsx'
 import { Button, Row, Segmented, SelectRow } from './ui.jsx'
 import './sport-statistics.css'
@@ -52,7 +53,7 @@ function SportHistory({ history }) {
     <ul className="sport-history" role="list">
       {history.slice(0, limit).map(a => <li key={a.id}>
         <Row icon={SPORT_ICON[a.sport]} title={activityName(a, t)} value={duration(a.min)}
-          subtitle={[fmtDate(a.d, false, true), a.title && t(SPORT_LABEL[a.sport])].filter(Boolean).join(' · ')} />
+          subtitle={[fmtDate(a.d, false, true), sessionClock(a.at), a.title && t(SPORT_LABEL[a.sport])].filter(Boolean).join(' · ')} />
       </li>)}
     </ul>
     {history.length > limit && <Button size="sm" variant="ghost"

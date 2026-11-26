@@ -7,6 +7,7 @@ import { beatsWeight, betterWeight } from './exercises.js'
 import { is1RMRecord } from './onerm.js'
 import { entryDbLoad } from './dumbbells.js'
 import { cleanBrand } from './gym-split.js'
+import { isKnownWorkoutLocation } from './workout-location.js'
 
 // planSec is live-session bookkeeping: a hold displaced before it finished puts its plan aside so
 // the row still knows what it is asking for (Workout.startTimed). A finished session keeps only
@@ -178,6 +179,7 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
     routineIds,
     routineId: routineIds[0] ?? null,
     name: active.name,
+    ...(isKnownWorkoutLocation(active.workoutLocation) || active.workoutLocation === 'unspecified' ? { workoutLocation: active.workoutLocation } : {}),
     ...(active.scheduledWorkoutId ? { scheduledWorkoutId: active.scheduledWorkoutId } : {}),
     bw: active.bw,
     entries,

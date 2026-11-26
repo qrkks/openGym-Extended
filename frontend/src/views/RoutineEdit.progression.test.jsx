@@ -8,6 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RoutineEdit from './RoutineEdit.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 import { POLICY_DESC } from '../lib/progression.js'
+import { useUI } from '../store/useUI.js'
+import { bindUI } from '../components/ui.jsx'
+
+bindUI(useUI)
 
 vi.mock('../lib/api.js', () => ({ api: vi.fn(() => Promise.resolve({})) }))
 vi.mock('../sheets.jsx', () => ({ glyphPicker: vi.fn(), exercisePicker: vi.fn(), exConfigSheet: vi.fn(), confirmSheet: vi.fn() }))
@@ -37,12 +41,32 @@ function renderRoutine(routine) {
 const rowTitled = title => [...container.querySelectorAll('.lrow')].find(r => r.querySelector('.lrow-t')?.textContent === title)
 const note = () => container.querySelector('.sect-b + .small.dim').textContent
 
-beforeEach(() => { localStorage.clear() })
+beforeEach(() => { localStorage.clear(); useUI.setState({ sheets: [] }) })
 afterEach(() => {
   if (root) act(() => root.unmount())
   if (container) container.remove()
   root = null
   container = null
+})
+
+it('sets and clears the location saved with the routine', () => {
+  renderRoutine({})
+  const pickLocation = label => {
+    act(() => rowTitled('Workout location').click())
+    const sheet = useUI.getState().sheets.at(-1)
+    const host = document.createElement('div')
+    const picker = createRoot(host)
+    act(() => picker.render(sheet.render(() => useUI.getState().closeSheet(sheet.id))))
+    const option = [...host.querySelectorAll('button')].find(button => button.textContent === label)
+    act(() => option.click())
+    act(() => picker.unmount())
+  }
+  expect(rowTitled('Workout location').textContent).toContain('Location not set')
+  pickLocation('At home')
+  expect(useStore.getState().S.routines[0].workoutLocation).toBe('home')
+  expect(rowTitled('Workout location').textContent).toContain('At home')
+  pickLocation('Location not set')
+  expect(useStore.getState().S.routines[0].workoutLocation).toBeUndefined()
 })
 
 describe('routine progression wording (#294)', () => {

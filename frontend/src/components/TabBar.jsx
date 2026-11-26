@@ -64,17 +64,17 @@ export default function TabBar({ onStart, onStartScheduled, onPick }) {
         return
       }
       // A day trained separately (#908) starts its next session not done yet.
-      if (dayApart(S, todayISO())) {
-        const ids = nextSessionIds(S, todayISO())
+      if (dayApart(S, today)) {
+        const ids = nextSessionIds(S, today)
         if (ids) { onStart(ids); return }
       // A weekday can hold several routines; start the combined session if any of them has
       // exercises, otherwise fall through to the picker.
-      } else if (effectiveRoutines(S, todayISO()).some(r => r.ex.length)) { onStart(effectiveRoutineIds(S, todayISO())); return }
+      } else if (effectiveRoutines(S, today).some(r => r.ex.length)) { onStart(effectiveRoutineIds(S, today)); return }
+      if (onPick) { onPick(); return }
     }
     nav('/workout')
   }
-  // A long press on Start opens the picker (#930): today's plan on top, everything else below.
-  // A tap still does what Start always did. Only with no workout running.
+  // A long press opens the picker whenever no workout is running.
   const holdStart = () => {
     if (S.active || !onPick) return
     clearTimeout(hold.current)

@@ -17,6 +17,8 @@ import { circuitLine, modeName, MODE_HINT } from '../lib/circuit-copy.js'
 import { fmtRest } from '../lib/duration.js'
 import Icon from '../components/Icon.jsx'
 import { glyphOf } from '../lib/glyphs.js'
+import { WorkoutLocationField } from '../components/WorkoutLocation.jsx'
+import { isKnownWorkoutLocation, workoutLocationOf } from '../lib/workout-location.js'
 import { Button, Row, SelectRow, Switch } from '../components/ui.jsx'
 import { shareRoutineSheet } from '../components/RoutineShare.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
@@ -513,6 +515,12 @@ export default function RoutineEdit() {
     </div>
 
     <div className="sect-b" style={{ marginBottom: 16 }}>
+      <WorkoutLocationField value={workoutLocationOf(r)} onChange={value => update(s => {
+        const routine = s.routines.find(item => item.id === id)
+        if (!routine) return
+        if (isKnownWorkoutLocation(value)) routine.workoutLocation = value
+        else delete routine.workoutLocation
+      })} />
       <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
         value={r.prog || profileRule(S)} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
         options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
