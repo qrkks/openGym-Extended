@@ -7,13 +7,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { dayAssignSheet, dayOverrideSheet, logPastWorkoutSheet, finishWorkout } from './sheets.jsx'
+import { bindUI } from './components/ui.jsx'
+import { dayAssignSheet, dayOverrideSheet, logPastWorkoutSheet, finishWorkout, plannedActivityOptionsSheet, startFlow } from './sheets.jsx'
 import { sportsOnWeekday } from './lib/sport-plan.js'
 import { datedActivitiesOn, plannedSportsOn } from './lib/dated-activity-plan.js'
 import { scheduledWorkoutOf, completedScheduledWorkout } from './lib/scheduled-workouts.js'
 import { effectiveRoutineIds } from './lib/history.js'
 import { markAllSetsDone } from './lib/backfill.js'
 import { EXDB } from './lib/exercises-data.js'
+import { fmtClock, fmtDate } from './lib/format.js'
+import { activitySheet } from './components/ActivitySheet.jsx'
+import { recoverySheet } from './components/RecoverySheet.jsx'
+
+bindUI(useUI)
 
 const BENCH = '0025'
 const ROW = EXDB.find(e => e.id !== BENCH && e.bp === 'back' && e.eq === 'barbell').id
@@ -31,6 +37,19 @@ function mountTopSheet() {
   return host
 }
 const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+function tapMenuAction(host, label) {
+  const item = [...host.querySelectorAll('.menu-item')].find(row => row.querySelector('.tt')?.textContent === label)
+  expect(item, label).toBeTruthy()
+  act(() => item.click())
+}
+
+function typeStartTime(host, value) {
+  const input = host.querySelector('input[type="time"]')
+  act(() => {
+    Object.getOwnPropertyDescriptor(input.constructor.prototype, 'value').set.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
 // Mounted before the click's own act(): a render nested inside it lands only once it is over.
 function tapInTopSheet(text) {
   const target = button(mountTopSheet(), text)
@@ -73,30 +92,35 @@ describe('one-off workouts on the calendar', () => {
     tapInTopSheet('Schedule a one-off workout')
     const form = mountTopSheet()
     expect(button(form, 'Save').disabled).toBe(true)
+    expect(form.textContent).toContain('Location not set')
+    act(() => button(form, 'Workout locationLocation not set').click())
+    tapInTopSheet('At home')
     act(() => button(form, 'Add exercise').click())
     const picker = mountTopSheet()
     const quickPicks = picker.querySelectorAll('.item.tap-host button.chev')
     expect(quickPicks.length).toBeGreaterThan(1)
     act(() => { quickPicks[0].click(); quickPicks[1].click() })
     act(() => useUI.getState().closeSheet(useUI.getState().sheets.at(-1).id))
-    expect(form.querySelectorAll('.lrow').length).toBe(2)
+    expect(form.querySelectorAll('.list .lrow').length).toBe(2)
     act(() => button(form, 'Save').click())
 
     const planned = scheduledWorkoutOf(S(), friday)
     expect(planned.ex).toHaveLength(2)
+    expect(planned.workoutLocation).toBe('home')
     expect(scheduledWorkoutOf(S(), '2026-09-25')).toBeNull()
     expect(effectiveRoutineIds(S(), friday)).toEqual(['A'])
     expect(S().routines.map(r => r.id)).toEqual(['A', 'B'])
     expect(S().workouts).toEqual([])
 
+    act(() => useStore.getState().update(s => { s.lastWorkoutLocation = 'gym' }))
     vi.setSystemTime(new Date(friday + 'T12:00:00'))
     dayOverrideSheet(friday)
     tapInTopSheet('Start workout')
-    expect(S().active).toMatchObject({ d: friday, routineIds: [], scheduledWorkoutId: planned.id })
+    expect(S().active).toMatchObject({ d: friday, routineIds: [], scheduledWorkoutId: planned.id, workoutLocation: 'home' })
     expect(S().active.entries.map(e => e.id)).toEqual(planned.ex.map(c => c.id))
     act(() => useStore.getState().update(s => { s.active.entries = markAllSetsDone(s.active.entries) }))
     act(() => finishWorkout())
-    expect(completedScheduledWorkout(S(), planned)).toMatchObject({ d: friday, scheduledWorkoutId: planned.id })
+    expect(completedScheduledWorkout(S(), planned)).toMatchObject({ d: friday, scheduledWorkoutId: planned.id, workoutLocation: 'home' })
     dayOverrideSheet(friday)
     expect(button(mountTopSheet(), 'Start workout')).toBeUndefined()
     expect(effectiveRoutineIds(S(), friday)).toEqual(['A'])
@@ -117,7 +141,110 @@ describe('one-off workouts on the calendar', () => {
   })
 })
 
+describe('workout locations in routine plans', () => {
+  it('prefills weigh-in from the plan and accepts a different location for this workout', () => {
+    install({ weighIn: true, lastWorkoutLocation: 'gym' })
+    useStore.getState().update(s => { s.routines[0].workoutLocation = 'home' })
+    act(() => startFlow(['A']))
+    const weighIn = mountTopSheet()
+    const location = button(weighIn, 'Workout locationAt home')
+    expect(location).toBeTruthy()
+    act(() => location.click())
+    tapInTopSheet('Gym')
+    act(() => button(weighIn, 'Start without weighing in').click())
+    expect(S().active.workoutLocation).toBe('gym')
+    expect(S().routines[0].workoutLocation).toBe('home')
+  })
+
+  it('leaves the location open for a session that combines routines at different places', () => {
+    install({ lastWorkoutLocation: 'home' })
+    useStore.getState().update(s => {
+      s.routines[0].workoutLocation = 'home'
+      s.routines[1].workoutLocation = 'gym'
+    })
+    act(() => startFlow(['A', 'B']))
+    expect(S().active.workoutLocation).toBe('unspecified')
+    expect(S().lastWorkoutLocation).toBe('home')
+  })
+})
+
 describe('dated sports and recovery', () => {
+  it('opens the recording form for today and cancels a future arrangement with undo', () => {
+    const today = '2026-09-16'
+    const friday = '2026-09-18'
+    install({
+      datedActivityPlan: {
+        [today + ':sport:fight']: { on: true },
+        [friday + ':recovery:stretch']: { on: true },
+        [friday + ':recovery:sauna']: { on: true },
+      },
+    })
+    act(() => plannedActivityOptionsSheet(today, 'sport', 'fight'))
+    const sport = mountTopSheet()
+    expect(sport.querySelector('h3').textContent).toBe('Boxing & martial arts')
+    expect(sport.textContent).toContain('Cancel this arrangement')
+    tapMenuAction(sport, 'Record completion')
+    expect(mountTopSheet().querySelector('[data-datefield]').value).toBe(today)
+    act(() => useUI.getState().closeAll())
+
+    act(() => dayOverrideSheet(friday))
+    tapInTopSheet('MobilityPlanned recovery')
+    const recovery = mountTopSheet()
+    expect(recovery.textContent).not.toContain('Record completion')
+    tapMenuAction(recovery, 'Cancel this arrangement')
+    expect(datedActivitiesOn(S(), friday, 'recovery')).toEqual(['sauna'])
+    expect(datedActivitiesOn(S(), today, 'sport')).toEqual(['fight'])
+    const undo = useUI.getState().toastAction
+    expect(undo.label).toBe('Undo')
+    act(() => undo.run())
+    expect(datedActivitiesOn(S(), friday, 'recovery')).toEqual(['sauna', 'stretch'])
+  })
+
+  it('shows the weekly editor for recurring sports on the selected weekday', () => {
+    const friday = '2026-09-18'
+    install({ sportPlan: { '5:fight': { on: true } } })
+    act(() => plannedActivityOptionsSheet(friday, 'sport', 'fight'))
+    const menu = mountTopSheet()
+    expect(menu.textContent).toContain('Every Friday')
+    expect(menu.textContent).not.toContain('Cancel this arrangement')
+    tapMenuAction(menu, 'Edit fixed days')
+    const editor = mountTopSheet()
+    expect(button(editor, 'Boxing & martial arts').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('keeps optional times through save and clears them when the field is emptied', () => {
+    const day = '2026-09-15'
+    const start = new Date(day + 'T23:50:00').getTime()
+    for (const [open, key, row] of [
+      [activitySheet, 'activities', '.act-row .ss'],
+      [recoverySheet, 'recoverySessions', '.rec-row .ss'],
+    ]) {
+      act(() => open({ day }))
+      let form = mountTopSheet()
+      expect(form.querySelector('input[type="time"]').value).toBe('')
+      expect(form.textContent).not.toContain('End time')
+      typeStartTime(form, '23:50')
+      expect(form.textContent).toContain('End time')
+      expect(form.textContent).toContain(fmtDate('2026-09-16', true))
+      act(() => button(form, 'Save').click())
+      const [id, saved] = Object.entries(S()[key])[0]
+      expect(saved.at).toBe(start)
+
+      act(() => dayOverrideSheet(day))
+      expect(mountTopSheet().querySelector(row).textContent).toContain(fmtClock(start))
+      act(() => open({ id }))
+      form = mountTopSheet()
+      expect(form.querySelector('input[type="time"]').value).toBe('23:50')
+      typeStartTime(form, '')
+      act(() => button(form, 'Save').click())
+      expect(S()[key][id].at).toBeUndefined()
+      act(() => dayOverrideSheet(day))
+      const line = mountTopSheet().querySelector(row).textContent
+      expect(line).toContain('min')
+      expect(line).not.toContain(fmtClock(start))
+    }
+  })
+
   it('schedules both categories for one date and opens the matching record forms', () => {
     const friday = '2026-09-18'
     dayOverrideSheet(friday)

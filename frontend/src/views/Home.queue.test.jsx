@@ -8,15 +8,15 @@ import React, { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { useStore } from '../store/useStore.js'
-import { dayOverrideSheet, startFlow } from '../sheets.jsx'
-import { todayISO, isoOf, fmtDate } from '../lib/format.js'
+import { dayOverrideSheet, plannedActivityOptionsSheet, startFlow } from '../sheets.jsx'
+import { todayISO, isoOf, fmtClock, fmtDate, fmtDur } from '../lib/format.js'
 import Home from './Home.jsx'
 import { setLang } from '../lib/i18n.js'
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), bwSheet: vi.fn(), goalSheet: vi.fn(), dayOverrideSheet: vi.fn(),
-  calendarSheet: vi.fn(), startFlow: vi.fn(), bwDeltaColor: () => '',
+  calendarSheet: vi.fn(), plannedActivityOptionsSheet: vi.fn(), startFlow: vi.fn(), bwDeltaColor: () => '',
 }))
 
 const routines = [
@@ -74,7 +74,7 @@ describe('Home — coach week progress row', () => {
     expect(todayTitle()).toBe('US W1 D1')
   })
 
-  it('switches to a full month beside a rotation, keeps date actions, and remembers the view', () => {
+  it('switches the day list before opening its menu and remembers the calendar view', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 25, 12))
     const since = new Date(2026, 10, 24, 8).getTime()
@@ -84,7 +84,7 @@ describe('Home — coach week progress row', () => {
       queue: queue({ since, startsOn: '2026-11-24', rotationId: 'rot' }),
       dayPlan: { '2026-11-27': 'd1' },
       workouts: [{ ...logged('own'), d: '2026-11-23', start: since - 86400000, end: since - 82800000 }],
-      activities: { ride: { d: '2026-11-23', sport: 'ride', min: 30 } },
+      activities: { ride: { d: '2026-11-23', sport: 'ride', min: 30, at: since - 86400000 } },
       recoverySessions: { stretch: { d: '2026-11-23', kind: 'stretch', min: 20 } },
       datedActivityPlan: {
         '2026-11-27:sport:ride': { on: true },
@@ -107,18 +107,48 @@ describe('Home — coach week progress row', () => {
     expect(host.querySelector('[data-date="2026-11-23"] .recovery-mark.done')).toBeTruthy()
     expect(host.querySelector('[data-date="2026-11-27"] .sport-mark.planned')).toBeTruthy()
     expect(host.querySelector('[data-date="2026-11-27"] .recovery-mark.planned')).toBeTruthy()
-    expect(host.querySelector('.home-recovery-rows').textContent).toContain('SaunaRecord completion')
+    expect(host.querySelector('.home-recovery-rows').textContent).toContain('SaunaPlanned recovery')
     expect(host.querySelector('[data-date="2026-11-27"] .dot.ovr')).toBeTruthy()
     expect(host.querySelector('[data-date="2026-11-26"] .dot.plan')).toBeNull()
     expect(chips()).toHaveLength(3)
+    const list = host.querySelector('#home-day-list')
     act(() => host.querySelector('[data-date="2026-11-23"]').click())
+    expect(dayOverrideSheet).not.toHaveBeenCalled()
+    expect(host.querySelector('.home-month [aria-pressed="true"].wday').dataset.date).toBe('2026-11-23')
+    expect(list.dataset.selectedDate).toBe('2026-11-23')
+    expect(list.querySelector('.home-day-rows').textContent).toContain('Core')
+    const startTime = fmtClock(since - 86400000)
+    expect(list.querySelector('.home-day-rows .lrow-s').textContent).toContain(startTime)
+    expect(list.querySelector('.home-day-rows .lrow-s').textContent).toContain(fmtDur(3600000))
+    expect(list.querySelector('.home-sport-rows .lrow-s').textContent).toContain(startTime)
+    expect(list.querySelector('.home-sport-rows .lrow-s').textContent).toContain('30 min')
+    expect(list.querySelector('.home-recovery-rows .lrow-s').textContent).toBe('20 min')
+    expect(list.textContent).not.toContain('Sauna')
+    act(() => list.querySelector('.home-day-rows button').click())
     expect(dayOverrideSheet).toHaveBeenCalledWith('2026-11-23')
+
+    act(() => host.querySelector('[data-date="2026-11-27"]').click())
+    expect(dayOverrideSheet).toHaveBeenCalledTimes(1)
+    expect(list.dataset.selectedDate).toBe('2026-11-27')
+    expect(list.textContent).toContain('US W1 D1')
+    expect(list.textContent).toContain('Planned sport')
+    expect(list.textContent).toContain('Planned recovery')
+    act(() => list.querySelector('.home-recovery-rows button').click())
+    expect(plannedActivityOptionsSheet).toHaveBeenCalledWith('2026-11-27', 'recovery', 'stretch')
+    act(() => list.querySelector('.home-day-heading').click())
+    expect(dayOverrideSheet).toHaveBeenLastCalledWith('2026-11-27')
 
     press('Next month')
     expect(host.querySelector('.home-calendar-label').textContent).toBe('December 2026')
     expect(host.querySelectorAll('.home-month .wday')).toHaveLength(31)
     press('Previous month')
     expect(host.querySelector('.home-calendar-label').textContent).toBe('November 2026')
+    press('Previous month')
+    expect(host.querySelector('.home-calendar-label').textContent).toBe('October 2026')
+    press('October 2026 · Back to today')
+    expect(host.querySelector('.home-month [aria-current="date"]').getAttribute('aria-pressed')).toBe('true')
+    expect(list.dataset.selectedDate).toBe('2026-11-25')
+    expect(list.querySelector('.home-recovery-rows').textContent).toContain('Sauna')
     act(() => root.render(null))
     mount()
     expect(host.querySelectorAll('.home-month .wday')).toHaveLength(30)
@@ -127,6 +157,15 @@ describe('Home — coach week progress row', () => {
     expect(host.querySelectorAll('.week .wday')).toHaveLength(7)
     expect(host.querySelector('[data-date="2026-11-23"] .recovery-mark.done')).toBeTruthy()
     expect(chips()).toHaveLength(3)
+    act(() => host.querySelector('[data-date="2026-11-23"]').click())
+    expect(host.querySelector('#home-day-list').dataset.selectedDate).toBe('2026-11-23')
+    expect(dayOverrideSheet).toHaveBeenCalledTimes(2)
+    press('Next week')
+    expect(host.querySelector('.week [aria-current="date"]')).toBeNull()
+    act(() => host.querySelector('button.home-calendar-label').click())
+    expect(host.querySelector('.home-calendar-label').textContent).toBe('This week')
+    expect(host.querySelector('.week [aria-current="date"]').getAttribute('aria-pressed')).toBe('true')
+    expect(host.querySelector('#home-day-list').dataset.selectedDate).toBe('2026-11-25')
   })
 
   it('keeps "Up next" in sentence case, as Plan says it, though .chip capitalizes names', async () => {

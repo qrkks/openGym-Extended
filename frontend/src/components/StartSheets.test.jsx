@@ -24,6 +24,7 @@ const wd = new Date(todayISO() + 'T12:00:00').getDay()
 beforeEach(() => {
   started.length = 0
   menus.length = 0
+  localStorage.removeItem('og_plan_folders')
   const S = structuredClone(DEF)
   S.routines = [
     { id: 'push', name: 'Push', emoji: null, ex: [{ id: '0025', sets: 3, reps: 8, w: 60 }] },
@@ -42,15 +43,74 @@ const rowTitles = sel => [...host.querySelectorAll(sel + ' .lrow-t')].map(e => e
 const click = text => act(() => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text || b.querySelector('.lrow-t')?.textContent === text).click())
 
 describe('the start picker (#930)', () => {
-  it('has today first, then every other routine (unscheduled ones too), then freestyle', () => {
+  it('has today first, then drop-in options and every other routine', () => {
     startPickerSheet(); renderTop()
     expect(rowTitles('.start-today')).toEqual(['Push'])
     const all = rowTitles('.menu-list')
-    expect(all).toEqual(['Push', 'Pull', 'Morning mobility', 'Freestyle workout (pick as you go)'])
+    expect(all).toEqual(['Push', 'Freestyle workout (pick as you go)', 'Log an activity', 'Log recovery', 'Pull', 'Morning mobility'])
     click('Morning mobility')
     expect(started).toEqual([['mob']])
     expect(useUI.getState().sheets).toHaveLength(0)
   })
+  it('places favourites and loose routines before folders and starts from a folder', () => {
+    useStore.getState().update(s => {
+      s.routines[0].folder = 'Full Body'
+      s.routines[1].folder = 'Full Body'
+      s.routines.push(
+        { id: 'fav', name: 'Favourite routine', folder: 'Full Body', fav: true, ex: [] },
+        { id: 'old', name: 'Archived routine', folder: 'Archive', ex: [] }
+      )
+    })
+    startPickerSheet(); renderTop()
+    expect(rowTitles('.start-today')).toEqual(['Push'])
+    expect(rowTitles('.menu-list').slice(-3)).toEqual(['Favourite routine', 'Morning mobility', 'Pull'])
+    const [folder, archive] = [...host.querySelectorAll('button.plan-folder')]
+    expect(folder.textContent).toBe('Full Body1')
+    expect(folder.getAttribute('aria-expanded')).toBe('true')
+    expect(archive.getAttribute('aria-expanded')).toBe('false')
+    act(() => folder.click())
+    expect(rowTitles('.menu-list')).not.toContain('Pull')
+    act(() => folder.click())
+    click('Pull')
+    expect(started).toEqual([['pull']])
+  })
+
+  it('opens planned sport and recovery with the right kind selected', () => {
+    const day = todayISO()
+    useStore.getState().update(s => {
+      s.datedActivityPlan = {
+        [day + ':sport:fight']: { on: true },
+        [day + ':sport:ride']: { on: true },
+        [day + ':recovery:stretch']: { on: true },
+      }
+      s.activities = { ride: { d: day, sport: 'ride', min: 30 } }
+    })
+    startPickerSheet(); renderTop()
+    expect(rowTitles('.start-today')).toEqual(['Push', 'Boxing & martial arts', 'Mobility'])
+    const rowIcon = title => [...host.querySelectorAll('.menu-list .lrow')]
+      .find(row => row.querySelector('.lrow-t').textContent === title).querySelector('.lrow-i')
+    for (const title of ['Boxing & martial arts', 'Log an activity']) expect(rowIcon(title).classList.contains('act-i')).toBe(true)
+    for (const title of ['Mobility', 'Log recovery']) expect(rowIcon(title).classList.contains('rec-i')).toBe(true)
+    click('Boxing & martial arts'); renderTop()
+    expect(host.querySelector('h3').textContent).toBe('Log an activity')
+    expect(host.querySelector('[role="radio"][aria-checked="true"]').textContent).toBe('Boxing & martial arts')
+    useUI.getState().closeAll()
+    startPickerSheet(); renderTop()
+    click('Mobility'); renderTop()
+    expect(host.querySelector('h3').textContent).toBe('Log recovery')
+    expect(host.querySelector('[role="radio"][aria-checked="true"]').textContent).toBe('Mobility')
+    expect(started).toEqual([])
+  })
+
+  it('opens the picker on a normal tap when there is no strength plan to start', () => {
+    const onStart = vi.fn(), onPick = vi.fn()
+    useStore.getState().update(s => { s.week = {} })
+    act(() => root.render(<TabBar onStart={onStart} onPick={onPick} />))
+    act(() => host.querySelector('[data-tour="start"]').click())
+    expect(onPick).toHaveBeenCalledOnce()
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
   it('starts the dated extra workout after the regular workout is done', () => {
     const day = todayISO()
     const onStart = vi.fn()
@@ -112,7 +172,7 @@ describe('the preview (#976)', () => {
     previewSheet(['pull']); renderTop()
     click('Choose a different workout')
     renderTop()
-    expect(host.querySelector('h3').textContent).toBe('What are we training?')
+    expect(host.querySelector('h3').textContent).toBe('Start')
   })
 })
 

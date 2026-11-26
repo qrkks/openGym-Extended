@@ -1,6 +1,8 @@
-import { favRoutinesFirst, isFavRoutine } from '../lib/routine-favs.js'
+import { isFavRoutine } from '../lib/routine-favs.js'
+import { folderOpen, groupRoutines } from '../lib/routine-folders.js'
 import Icon from './Icon.jsx'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { startFlow, menuSheet, startScheduledWorkout } from '../sheets.jsx'
@@ -15,6 +17,11 @@ import { exOr } from '../lib/exercises.js'
 import { speedUnitOf } from '../lib/speed.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { leftoversBefore } from '../lib/leftovers.js'
+import { activitiesOn, SPORT_ICON, SPORT_LABEL } from '../lib/activities.js'
+import { datedActivitiesOn, plannedSportsOn } from '../lib/dated-activity-plan.js'
+import { recoveryOn, RECOVERY_ICON, RECOVERY_LABEL } from '../lib/recovery-sessions.js'
+import { activitySheet } from './ActivitySheet.jsx'
+import { recoverySheet } from './RecoverySheet.jsx'
 import { Button, Row } from './ui.jsx'
 import MiniBodyMap from './MiniBodyMap.jsx'
 
@@ -54,35 +61,53 @@ function askLeftovers(left, ids) {
 }
 
 /* ---------- the start picker (#930) ---------- */
-// Which workout to start, straight from the Start button (a long press, or every tap with
-// Settings → Workout → Start button → "Lets you pick"), and from Home's "Choose a different
-// workout": today's plan on top, every other routine below it (scheduled on another day or on
-// none), and a freestyle session last. One tap starts it, or opens its preview.
+function StartRoutineFolder({ name, count, children }) {
+  const [open, setOpen] = useState(() => folderOpen(name))
+  return <div className="plan-folder-sect">
+    <button type="button" className="plan-folder" aria-expanded={open} onClick={() => setOpen(open => !open)}>
+      <Icon name="folder" /><span className="grow">{name}</span><span className="n">{count}</span>
+      <Icon name="chevronRight" className="chev" />
+    </button>
+    {open && children}
+  </div>
+}
+
+// Start today's planned sessions, choose another strength routine, or log a sport or recovery.
 function StartPicker({ close }) {
+  const nav = useNavigate()
   const st = useStore(s => s.S)
   const today = todayISO()
   const sessions = daySessionsStatus(st, today).filter(x => x.routines.length)
   const scheduled = scheduledWorkoutOf(st, today)
   const pending = scheduled && !completedScheduledWorkout(st, scheduled)
-  const names = [...sessions.map(s => deriveSessionName(s.routines.map(r => r.name))), ...(pending ? [scheduled.name] : [])]
+  const loggedSports = activitiesOn(st, today)
+  const loggedRecovery = recoveryOn(st, today)
+  const sports = plannedSportsOn(st, today).filter(sport => !loggedSports.some(a => a.sport === sport))
+  const recovery = datedActivitiesOn(st, today, 'recovery').filter(kind => !loggedRecovery.some(r => r.kind === kind))
+  const hasToday = sessions.length > 0 || pending || sports.length > 0 || recovery.length > 0
   const planned = new Set(sessions.flatMap(x => x.ids))
-  // Starred routines first (lib/routine-favs.js, #327), each half in Plan's order.
-  const others = favRoutinesFirst((st.routines || []).filter(r => !planned.has(r.id)))
+  const others = (st.routines || []).filter(r => !planned.has(r.id))
+  const favourites = others.filter(isFavRoutine)
+  const groups = groupRoutines(others.filter(r => !isFavRoutine(r)))
   const go = ids => { close(); startOrPreview(ids) }
+  const routineList = (routines, key) => <div key={key} className="list menu-list" style={{ marginBottom: 14 }}>
+    {routines.map(r => <Row key={r.id} icon={glyphOf(r.emoji)}
+      title={isFavRoutine(r) ? <><Icon name="starFill" className="fav-star" />{r.name}</> : r.name}
+      subtitle={exCount((r.ex || []).length)} accessory="chevron" onClick={() => go([r.id])} />)}
+  </div>
+  const logSport = sport => { close(); activitySheet({ day: today, sport }) }
+  const logRecovery = kind => { close(); recoverySheet({ day: today, kind }) }
   const nameOf = s => deriveSessionName(s.routines.map(r => r.name))
   const firstOpen = sessions.find(x => !x.done)
   const left = leftoversBefore(st, today, firstOpen ? firstOpen.ids : [])
   return <>
-    <h3 style={{ marginBottom: 2 }}>{t('What are we training?')}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>
-      {names.length ? t('Today is {0}. Or pick anything else.', names.join(', ')) : t('Rest day, but no one’s stopping you.')}
-    </div>
+    <h3 style={{ marginBottom: 12 }}>{t('Start')}</h3>
     {left && <div className="list menu-list" style={{ marginBottom: 14 }}>
       <Row icon="history" iconTint="var(--orange)" title={tn('Start with the {0} exercise you didn’t get to', 'Start with the {0} exercises you didn’t get to', left.ex.length)}
         subtitle={leftFrom(left) + (firstOpen ? ' · ' + t('then {0}', nameOf(firstOpen)) : '')} accessory="chevron"
         onClick={() => { close(); startWithLeftovers(left, firstOpen ? firstOpen.ids : []) }} />
     </div>}
-    {names.length > 0 && <>
+    {hasToday && <>
       <h4 className="sec">{t('Today')} · {t(DAYN[new Date(today + 'T12:00:00').getDay()])}</h4>
       <div className="list menu-list start-today" style={{ marginBottom: 14 }}>
         {sessions.map((s, i) => <Row key={s.ids.join('+')} icon={s.done ? 'checkCircle' : glyphOf(s.routines[0].emoji)}
@@ -92,18 +117,33 @@ function StartPicker({ close }) {
           onClick={() => go(s.ids)} />)}
         {pending && <Row icon="dumbbell" title={scheduled.name} subtitle={exCount(scheduled.ex.length)}
           accessory="chevron" onClick={() => startScheduledWorkout(today, close)} />}
-      </div>
-    </>}
-    {others.length > 0 && <>
-      <h4 className="sec">{names.length ? t('Other routines') : t('Your routines')}</h4>
-      <div className="list menu-list" style={{ marginBottom: 14 }}>
-        {others.map(r => <Row key={r.id} icon={glyphOf(r.emoji)} title={isFavRoutine(r) ? <><Icon name="starFill" className="fav-star" />{r.name}</> : r.name} subtitle={exCount((r.ex || []).length)}
-          accessory="chevron" onClick={() => go([r.id])} />)}
+        {sports.map(sport => <Row key={'sport-' + sport} icon={SPORT_ICON[sport]} iconClassName="act-i" title={t(SPORT_LABEL[sport])}
+          subtitle={t('Record completion')} accessory="chevron" onClick={() => logSport(sport)} />)}
+        {recovery.map(kind => <Row key={'recovery-' + kind} icon={RECOVERY_ICON[kind]} iconClassName="rec-i" title={t(RECOVERY_LABEL[kind])}
+          subtitle={t('Record completion')} accessory="chevron" onClick={() => logRecovery(kind)} />)}
       </div>
     </>}
     <div className="list menu-list" style={{ marginBottom: 14 }}>
       <Row icon="shuffle" title={t('Freestyle workout (pick as you go)')} accessory="chevron" onClick={() => { close(); startFlow([]) }} />
+      <Row icon="figureRun" iconClassName="act-i" title={t('Log an activity')} accessory="chevron" onClick={() => logSport()} />
+      <Row icon="stretch" iconClassName="rec-i" title={t('Log recovery')} accessory="chevron" onClick={() => logRecovery()} />
+      {!st.routines.length && <Row icon="calendar" title={t('Build a plan first')} accessory="chevron"
+        onClick={() => { close(); nav('/plan') }} />}
     </div>
+    {others.length > 0 && <>
+      <h4 className="sec">{hasToday ? t('Other routines') : t('Your routines')}</h4>
+      {favourites.length > 0 && <>
+        <h4 className="sec">{t('Favourites')}</h4>
+        {routineList(favourites)}
+      </>}
+      {groups.map(({ folder, routines }) => {
+        if (!routines.length) return null
+        if (!folder) return routineList(routines, 'loose')
+        return <StartRoutineFolder key={'folder:' + folder.toLowerCase()} name={folder} count={routines.length}>
+          {routineList(routines)}
+        </StartRoutineFolder>
+      })}
+    </>}
     <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
   </>
 }

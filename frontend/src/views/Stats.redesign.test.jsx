@@ -134,6 +134,27 @@ describe('Stats redesign: Overview', () => {
     expect(host.textContent).toContain('Workout heatmap (last 12 months)')
   })
 
+  it('counts distinct training days for each location from this month up to today', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 25, 12))
+    const gym = (day, muscle = 'chest') => ({ ...done(day, muscle, 2), workoutLocation: 'gym' })
+    const home = (day, muscle = 'chest') => ({ ...done(day, muscle, 2), workoutLocation: 'home' })
+    const legacyGym = gym('2026-11-22')
+    delete legacyGym.d
+    const legacyWithEquipment = { ...done('2026-11-23', 'chest', 2), gym: { id: 'profile', name: 'Gym' } }
+    mount(small({
+      workouts: [
+        gym('2026-10-31'), legacyGym, gym('2026-11-22', 'biceps'), legacyWithEquipment,
+        home('2026-10-30'), home('2026-11-24'), home('2026-11-24', 'biceps'),
+        gym('2026-11-25'), home('2026-11-25', 'biceps'), gym('2026-11-26'), home('2026-11-26', 'biceps'),
+      ],
+      scheduledWorkouts: { '2026-11-23': { id: 'planned', workoutLocation: 'gym', ex: [{ id: 'press', sets: 12 }] } },
+    }))
+    const locationRows = [...card('.stats-month-locations').children]
+    expect(locationRows.map(row => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]))
+      .toEqual([['Gym days', '2'], ['Home training days', '2']])
+  })
+
   it('offers Progress photos before the first workout, so the first photo can be taken', () => {
     mount(Object.assign(clone(DEF), { workouts: [] }))
     const titles = [...host.querySelectorAll('[data-stats-links] .lrow-t')].map(t => t.textContent)

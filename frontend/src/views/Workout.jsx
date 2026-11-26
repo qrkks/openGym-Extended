@@ -40,8 +40,9 @@ import { SessionMapButton } from '../components/SessionMuscles.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
 import { REST_MAX, fmtRest, restWheelValue } from '../lib/duration.js'
 import { youtubeSearchUrl } from '../lib/youtube.js'
-import { openExternal } from '../components/CustomMedia.jsx'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, finishWorkout, exitWorkoutEdit, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, renameWorkoutSheet, swapActiveWorkoutExercise, barWeightSheet, menuSheet, effortPickerSheet, exerciseHistorySheet, addRoutineToSessionSheet, finishWorkoutSheet, finishWorkoutNow, swapActiveWorkoutToBackup, setNoteSheet } from '../sheets.jsx'
+import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, exerciseTutorialSheet, finishWorkout, exitWorkoutEdit, confirmSheet, exerciseNoteSheet, sessionNoteSheet, renameWorkoutSheet, swapActiveWorkoutExercise, barWeightSheet, menuSheet, effortPickerSheet, exerciseHistorySheet, addRoutineToSessionSheet, finishWorkoutSheet, finishWorkoutNow, swapActiveWorkoutToBackup, setNoteSheet } from '../sheets.jsx'
+import { WorkoutLocationButton } from '../components/WorkoutLocation.jsx'
+import { setActiveWorkoutLocation, workoutLocationOf } from '../lib/workout-location.js'
 import { afterScrollRestore, scrollRestorePending } from '../components/Modals.jsx'
 import { effortColor } from '../lib/effort.js'
 import Elapsed from '../components/Elapsed.jsx'
@@ -282,7 +283,7 @@ function ExerciseBlock({ entryIdx, compact, listed, dense, editing, onToggle, on
   // Per-side weight/reps/effort edits (issue #60): patch one side of a unilateral row, keeping
   // the row's aggregate (r/w/done/effort) in step via the model helper so every other reader
   // stays right. The done tick goes through onToggleSide → toggle() instead, so ticking a side
-  // still fires the rest timer / auto-advance / workout-complete flow.
+  // still fires the rest timer and auto-advance flow.
   const setSide = (i, side, field, v) => {
     if (field !== 'w') return mutSet(i, row => markWarmupEdited(setSideField(row, side, field, v), field))
     update(s => inEntryUnit(s, entryIdx, e => {
@@ -618,7 +619,7 @@ function ExerciseBlock({ entryIdx, compact, listed, dense, editing, onToggle, on
           onProgressionSettings && { icon: 'slider', label: t('Exercise settings'), sub: guidance ? t(guidance.policyLabel) : t('Sets, reps, rest, progression'), onClick: onProgressionSettings },
           plateLoading && { icon: 'plate', label: t('Plate loading'), sub: loadSummary, onClick: () => barWeightSheet(entry.id, cfg) },
           { icon: 'info', label: t('How to do it'), onClick: () => exerciseDetailSheet(ex) },
-          youtubeSearchUrl(ex) && { icon: 'play', label: t('Watch on YouTube'), sub: t('Opens a search for good form'), onClick: () => openExternal(youtubeSearchUrl(ex)) },
+          youtubeSearchUrl(ex) && { icon: 'play', label: t('Search for exercise tutorials'), chevron: true, onClick: () => exerciseTutorialSheet(ex) },
           routineUpdate && { icon: 'clipboard', label: t('Update routine'), sub: routineUpdate.sub, onClick: routineUpdate.run },
         ] },
         { title: t('Order and supersets'), items: [
@@ -1575,6 +1576,7 @@ function ActiveWorkout() {
 
   const total = setUnitsTotal(A.entries)
   const done = setsDoneActive(A)
+  const allDone = total > 0 && done === total
   // The volume so far (#774), in the header every layout shares. It shows from the first second
   // whenever the session holds something to weigh, so nothing moves when the first set is
   // ticked; runs, holds and bodyweight work alone have no tonnage to show.
@@ -1857,16 +1859,13 @@ function ActiveWorkout() {
         onClick: () => update(s => { if (s.active) s.active.collapseCompleted = !collapseOn }) },
     ],
   })
-  // Logging a past workout (#284): the sets were done days ago, so one tap ticks them all and
-  // offers the finish, the same sheet the last set of a live session opens. What went
-  // differently is still edited on the rows before finishing.
+  // In a past workout, tick the recorded sets together so the user can review them before saving.
   const markAllDone = () => {
     update(s => { if (s.active) s.active.entries = markAllSetsDone(s.active.entries) }, true)
     const fresh = useStore.getState().S.active
     // Ticked here rather than row by row: without this, unticking and reticking one of them
     // would count as new progress and replay the flow a first tick runs.
     if (fresh) progressHighWater.current = fresh.entries.map(e => e.sets.filter(s => s.done).length)
-    workoutCompleteSheet()
   }
   // Adds an exercise after the current unit: the button under the session and the ⋯ menu's Add.
   const addExercise = () => exercisePicker((ex, quick) => {
@@ -1909,9 +1908,7 @@ function ActiveWorkout() {
     // The confirm names what it changes: this workout, never the routine behind it.
     else exConfigSheet(ex, null, commit, null, routine, seed, null, t('Add to this workout'), { freestyle: freestyle ? 'add' : false })
   })
-  // Ending the session without saving it, from the Finish sheet only. It used to end the header ⋯
-  // as a red trash too, right where the exercise ⋯ keeps Remove exercise, and after a hard session
-  // the two got mixed up (#751).
+  // Discard lives in the Finish sheet or, once all sets are ticked, Workout options.
   // Named for the watch first: gone from its snapshot it would look finished, and be saved to Apple Health (#776).
   // The watch's own Discard (confirmed there) runs this too.
   const discardNow = () => { markDiscarded(useStore.getState().S.active?.id); update(s => { s.active = null }); stopRest(); stopWork(); nav('/home') }
@@ -1927,6 +1924,9 @@ function ActiveWorkout() {
   const gymSwitchable = !editing && !A.backfill && gyms.length > 1
   const sessionPin = gymNoteFor(sessionGymView(S))
   const gymShown = editing ? (A.gym?.name || null) : gymSwitchable && gymNow ? gymLabel(gymNow) : null
+  const changeLocation = value => update(s => {
+    if (s.active?.id === A.id && s.active?.editingWorkoutId === A.editingWorkoutId) setActiveWorkoutLocation(s, value, !editing)
+  })
   const askSwitchGym = g => {
     if (!g || g.id === gymNow?.id) return
     confirmSheet({
@@ -1980,6 +1980,7 @@ function ActiveWorkout() {
       { more: [{ items: [
         !editing && { icon: 'clipboard', label: t('Add routine'), sub: t('Bring another routine into this session'), onClick: addRoutineToSessionSheet },
         { icon: 'pencil', label: t('Rename workout'), onClick: renameWorkoutSheet },
+        !editing && allDone && { icon: 'trash', danger: true, label: t('Discard workout'), onClick: discardWorkout },
         gymSwitchable && { icon: 'house', label: t('Gym'), sub: gymNow ? gymLabel(gymNow) : t('Pick a gym'), onClick: openGymMenu },
         noProgSwitchable && { icon: 'chartLineSlash', label: t('Don’t count for progression'), sub: t('Every exercise in this workout'), on: sessionNoProg(A), onClick: toggleSessionNoProg },
       ] }] },
@@ -2110,8 +2111,7 @@ function ActiveWorkout() {
 
   // A timed set is held, not typed. The work timer records what was actually held — an early
   // finish logs 0:38 of a 0:45 target rather than crediting the full prescription — and then
-  // checks the set off through the normal path, so rest, supersets and the finish prompt all
-  // behave exactly as they do for a reps set.
+  // checks the set off through the normal path for rest and superset progression.
   // `startedAt`/`auto`: a hold the chain started by itself when its count-in ended (lib/auto-holds.js).
   const startTimed = (idx, i, onFocusProgress, { startedAt = null } = {}) => {
     if (editing) return
@@ -2231,7 +2231,7 @@ function ActiveWorkout() {
     if (typeof document !== 'undefined') { const a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) a.blur?.() }
     const m = modeAt(idx)
     const cardioEntry = m === 'cardio'
-    let exJustDone = false, workoutDone = false, checked = false
+    let exJustDone = false, checked = false
     update(s => {
       const e = s.active.entries[idx]
       // A per-side tick flips just that side; the row's own `done` (both sides) is then
@@ -2247,12 +2247,6 @@ function ActiveWorkout() {
         // A set logged while paused (#976): you are back, and so is the clock.
         if (isPaused(s.active)) resumeWorkout(s.active)
         if (!quiet) { beep(S.sound, 1040, 0.12); vibrate(30) }
-        // The unit that owns the ticked set — not the marked one. Since !92 the marker no longer
-        // follows a finished exercise, and in list mode any exercise can be worked on, so judging
-        // the marker's unit here declared the workout complete after one set elsewhere.
-        const ownUnit = unitOf(units, idx)
-        const unitDone = ownUnit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => x.done))
-        if (unitDone) workoutDone = !nextUnfinishedUnit(A.entries, supersetUnits(A.entries), idx)
         if (e.sets.every(x => x.done)) {
           exJustDone = true
           // topW is captured now; exWeights only at the finish (doFinishWorkout), so a typo you
@@ -2263,8 +2257,7 @@ function ActiveWorkout() {
     }, true)
     if (editing) return
     if (checked && !quiet) cheerRecord(idx, i)
-    if (workoutDone) workoutCompleteSheet()
-    else if (exJustDone && cardioEntry) useUI.getState().toast(t('Cardio logged'))
+    if (exJustDone && cardioEntry) useUI.getState().toast(t('Cardio logged'))
     else if (exJustDone && m === 'time') useUI.getState().toast(t('Hold logged'))
 
     // One side of a per-side reps set ticked, the other still to go: the set's own rest when it
@@ -2715,20 +2708,21 @@ function ActiveWorkout() {
     {/* In season, a corner web under the header's own buttons (components/Seasonal.jsx). */}
     <SeasonDeco spot="workout-hdr" workout />
     {/* ⌄ leaves the screen and keeps the session running (the tab bar's Resume brings it back);
-        in the editor of a saved workout it is the ✕ that closes the editor. Finish is a labelled pill
-        rather than a check that looked like a set tick: it opens the Finish sheet (Finish and save,
-        Discard, the only way to discard, #751), the editor's Save saves at once. */}
+        in the editor it closes the editor. Finish opens the options sheet while sets remain and
+        saves directly once they are all ticked. */}
     <div className="hdr whdr-bar">
       {editing
         ? <button className="iconbtn" aria-label={t('Close editor')} title={t('Close editor')} onClick={() => exitWorkoutEdit()}><Icon name="xmark" /></button>
         : <button className="iconbtn" aria-label={t('Minimize')} title={t('Minimize')} onClick={() => nav('/home')}><Icon name="chevronDown" /></button>}
       <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <>{paused && <span className="whdr-paused">{t('Paused')} </span>}<Elapsed start={A.start} pausedAt={A.pausedAt} /></>} · {t('{0} sets', done + '/' + total)}{!(A.backfill || editing) && isOn(S, 'health') && <LiveHeartRate />}</div>{gymShown && (gymSwitchable
         ? <button type="button" className="whdr-gym" onClick={openGymMenu} aria-label={t('Gym: {0}', gymShown)}><Icon name="house" />{gymShown}</button>
-        : <span className="whdr-gym"><Icon name="house" />{gymShown}</span>)}</div>
+        : <span className="whdr-gym"><Icon name="house" />{gymShown}</span>)}
+        <WorkoutLocationButton value={workoutLocationOf(A)} onChange={changeLocation} />
+      </div>
       {!chipRow && sessionMap}
       <button className="iconbtn" data-tour="workout-more" aria-label={t('Workout options')} title={t('Workout options')} onClick={openViewMenu}><Icon name="more" /></button>
       <button className="btn primary pill whdr-finish" data-tour="finish" aria-label={editing ? t('Save changes') : undefined}
-        onClick={() => (editing ? finishWorkout() : finishWorkoutSheet({ onDiscard: discardWorkout }))}>{editing ? t('Save') : t('Finish')}</button>
+        onClick={() => (editing || allDone ? finishWorkout() : finishWorkoutSheet({ onDiscard: discardWorkout }))}>{editing ? t('Save') : allDone ? t('Finish and save') : t('Finish')}</button>
     </div>
     {/* The volume so far rides at the end of the progress bar (#774): one line that never wraps,
         so a growing number cannot reflow the header the way a third item in the line above did
@@ -2924,7 +2918,6 @@ function ActiveWorkout() {
         "Finish workout early" line, since the header's Finish already covers the early way out. */}
     {(() => {
       const exDone = A.entries.filter(e => e.sets.length && e.sets.every(s => s.done)).length
-      const allDone = A.entries.length > 0 && exDone === A.entries.length
       return <button className={allDone ? 'btn primary' : 'btn ghost dim'} onClick={finishWorkout}>
         {editing ? t('Save changes') : allDone ? t('Finish workout') : t('Finish workout early · {0} exercises', exDone + '/' + A.entries.length)}
       </button>

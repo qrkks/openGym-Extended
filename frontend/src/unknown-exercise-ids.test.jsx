@@ -99,6 +99,39 @@ beforeEach(() => {
 })
 afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
 
+describe('exercise tutorial menu', () => {
+  it.each(['Bilibili', 'Douyin', 'YouTube'])('opens the %s results with the platform-specific exercise name', async provider => {
+    seed()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    try {
+      const ex = exOr(SQUAT)
+      exerciseDetailSheet(ex)
+      const detail = mountTopSheet()
+      act(() => [...detail.querySelectorAll('button')].find(b => b.textContent === 'Search for exercise tutorials').click())
+      const menu = mountTopSheet()
+      const choice = [...menu.querySelectorAll('.menu-item')].find(row => row.textContent === provider)
+      const { default: names } = await act(async () => await import('./exercise-names/zh.js'))
+      expect(choice.getAttribute('aria-disabled')).toBeNull()
+      act(() => choice.click())
+      const [url] = open.mock.calls[0]
+      const target = new URL(url)
+      if (provider === 'Bilibili') {
+        expect(target.hostname).toBe('search.bilibili.com')
+        expect(target.searchParams.get('keyword')).toBe(names[SQUAT] + ' 动作教学')
+      } else if (provider === 'Douyin') {
+        expect(target.hostname).toBe('www.douyin.com')
+        expect(decodeURIComponent(target.pathname)).toBe('/search/' + names[SQUAT] + ' 动作教学')
+      } else {
+        expect(target.hostname).toBe('www.youtube.com')
+        expect(target.searchParams.get('search_query')).toBe(ex.n + ' form')
+      }
+      expect(open).toHaveBeenCalledOnce()
+    } finally {
+      open.mockRestore()
+    }
+  })
+})
+
 describe('exercise ids this build does not know', () => {
   it('the id really is unknown here, and exOr stands in for it', () => {
     expect(EXIDX[UNK]).toBeUndefined()
@@ -144,8 +177,17 @@ describe('exercise ids this build does not know', () => {
     exerciseHistorySheet(UNK)
     mountTopSheet()
     exerciseDetailSheet(exOr(UNK))
-    mountTopSheet()
+    const detail = mountTopSheet()
+    expect(detail.querySelector('.exercise-id bdi').textContent).toBe(UNK)
     expectKept(useStore.getState().S)
+  })
+
+  it('offers tutorial search for known exercises only', () => {
+    seed()
+    exerciseDetailSheet(exOr(UNK))
+    expect(mountTopSheet().textContent).not.toContain('Search for exercise tutorials')
+    exerciseDetailSheet(exOr(SQUAT))
+    expect(mountTopSheet().textContent).toContain('Search for exercise tutorials')
   })
 
   it('Stats draws it, and its exercise picker leaves out the id it has no name for', () => {

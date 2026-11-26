@@ -228,6 +228,6 @@ export function applyReopen(s, rec, now = Date.now()) {
     if (cur && cur.d === w.d) { if (prev) s.exWeights[id] = prev; else delete s.exWeights[id] }
   }
   if (rec.sessionTargets !== undefined) s.sessionTargets = rec.sessionTargets
-  s.active = { ...rec.active, reopenedAt: now }
+  s.active = { ...rec.active, ...(w.workoutLocation ? { workoutLocation: w.workoutLocation } : {}), reopenedAt: now }
   return true
 }

@@ -9,7 +9,8 @@ import {
   RECOVERY_KINDS, RECOVERY_LABEL, RECOVERY_ICON, RECOVERY_PRESETS, RECOVERY_MIN_MAX,
   recoverySessionsOf, withRecovery, recoveryLine,
 } from '../lib/recovery-sessions.js'
-import DateField from './DateField.jsx'
+import { sessionClock, sessionInputStart, sessionInputTime } from '../lib/session-time.js'
+import SessionWhenFields from './SessionWhenFields.jsx'
 import Icon from './Icon.jsx'
 import { Button, Stepper } from './ui.jsx'
 
@@ -26,6 +27,7 @@ function RecoveryLog({ id = null, day = null, initialKind = null, close }) {
   const [kind, setKind] = useState(had?.kind || initialKind || 'sauna')
   const [min, setMin] = useState(had?.min || RECOVERY_PRESETS[kind][1])
   const [d, setD] = useState(had?.d || day || todayISO())
+  const [time, setTime] = useState(() => sessionInputTime(had?.at))
   const [note, setNote] = useState(had?.note || '')
   const noteRef = useRef(null)
   const onNoteFocus = useSheetKeyboard(noteRef)
@@ -36,7 +38,7 @@ function RecoveryLog({ id = null, day = null, initialKind = null, close }) {
   }
   const save = () => {
     if (!(min >= 1) || d > todayISO()) return
-    update(s => { s.recoverySessions = withRecovery(s.recoverySessions, recordId, { d, kind, min, note: note.trim().slice(0, NOTE_MAX) }) })
+    update(s => { s.recoverySessions = withRecovery(s.recoverySessions, recordId, { d, kind, min, at: sessionInputStart(d, time, had), note: note.trim().slice(0, NOTE_MAX) }) })
     close()
     toast(had ? t('Saved') : t('{0} logged. Your muscles say thanks.', t(RECOVERY_LABEL[kind])))
   }
@@ -59,10 +61,7 @@ function RecoveryLog({ id = null, day = null, initialKind = null, close }) {
         aria-pressed={min === m} onClick={() => setMin(m)}>{t('{0} min', m)}</button>)}
       <Stepper value={min} min={1} max={RECOVERY_MIN_MAX} step={1} decimal={false} onChange={setMin} unit={t('min')} ariaLabel={t('Minutes')} />
     </div>
-    <label className="measure-date">
-      <span>{t('Date')}</span>
-      <DateField value={d} max={todayISO()} onChange={setD} label={t('Date')} />
-    </label>
+    <SessionWhenFields day={d} onDay={setD} time={time} onTime={setTime} minutes={min} previous={had} />
     <textarea ref={noteRef} className="input" rows={2} maxLength={NOTE_MAX} value={note}
       placeholder={t('How was it? (optional)')} onFocus={onNoteFocus} onChange={e => setNote(e.target.value)} />
     <div style={{ height: 16 }} />
@@ -80,7 +79,7 @@ export function RecoveryRow({ r, showDate = true }) {
   return <div className="item rec-row" {...tappable(() => recoverySheet({ id: r.id }))}>
     <span className="lrow-i rec-i" aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={RECOVERY_ICON[r.kind]} /></span>
     <div className="grow"><div className="tt">{t(RECOVERY_LABEL[r.kind])}</div>
-      <div className="ss">{[showDate ? fmtDate(r.d, true) : null, t('{0} min', r.min), r.note].filter(Boolean).join(' · ')}</div></div>
+      <div className="ss">{[showDate ? fmtDate(r.d, true) : null, sessionClock(r.at), t('{0} min', r.min), r.note].filter(Boolean).join(' · ')}</div></div>
     <Icon name="chevronRight" className="chev" />
   </div>
 }

@@ -6,7 +6,8 @@ import { fmtDate, fmtNum, todayISO, uid } from '../lib/format.js'
 import { NOTE_MAX } from '../lib/history.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
 import { SPORTS, SPORT_LABEL, SPORT_ICON, SPORT_PRESETS, ACTIVITY_MIN_MAX, activitiesOf, withActivity, activityName } from '../lib/activities.js'
-import DateField from './DateField.jsx'
+import { sessionClock, sessionInputStart, sessionInputTime } from '../lib/session-time.js'
+import SessionWhenFields from './SessionWhenFields.jsx'
 import Icon from './Icon.jsx'
 import { Button, Stepper } from './ui.jsx'
 
@@ -34,12 +35,13 @@ function ActivityLog({ id = null, day = null, initialSport = null, close }) {
   const [sport, setSport] = useState(had?.sport || initialSport || 'run')
   const [min, setMin] = useState(had?.min || SPORT_PRESETS[1])
   const [d, setD] = useState(had?.d || day || todayISO())
+  const [time, setTime] = useState(() => sessionInputTime(had?.at))
   const [note, setNote] = useState(had?.note || '')
   const noteRef = useRef(null)
   const onNoteFocus = useSheetKeyboard(noteRef)
   const save = () => {
     if (!(min >= 1) || d > todayISO()) return
-    update(s => { s.activities = withActivity(s.activities, recordId, { ...(had || {}), d, sport, min, note: note.trim().slice(0, NOTE_MAX), src: had?.src || 'manual' }) })
+    update(s => { s.activities = withActivity(s.activities, recordId, { ...(had || {}), d, sport, min, at: sessionInputStart(d, time, had), note: note.trim().slice(0, NOTE_MAX), src: had?.src || 'manual' }) })
     close()
     toast(t('Saved'))
   }
@@ -62,10 +64,7 @@ function ActivityLog({ id = null, day = null, initialSport = null, close }) {
         aria-pressed={min === m} onClick={() => setMin(m)}>{t('{0} min', m)}</button>)}
       <Stepper value={min} min={1} max={ACTIVITY_MIN_MAX} step={5} decimal={false} onChange={setMin} unit={t('min')} ariaLabel={t('Minutes')} />
     </div>
-    <label className="measure-date">
-      <span>{t('Date')}</span>
-      <DateField value={d} max={todayISO()} onChange={setD} label={t('Date')} />
-    </label>
+    <SessionWhenFields day={d} onDay={setD} time={time} onTime={setTime} minutes={min} previous={had} />
     <textarea ref={noteRef} className="input" rows={2} maxLength={NOTE_MAX} value={note}
       placeholder={t('How was it? (optional)')} onFocus={onNoteFocus} onChange={e => setNote(e.target.value)} />
     <div style={{ height: 16 }} />
@@ -84,7 +83,7 @@ export function ActivityRow({ a, showDate = true }) {
   return <div className="item act-row" data-activity={a.id} {...tappable(() => activitySheet({ id: a.id }))}>
     <span className="lrow-i act-i" aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={SPORT_ICON[a.sport] || 'flag'} /></span>
     <div className="grow"><div className="tt">{activityName(a, t)}</div>
-      <div className="ss">{[showDate ? fmtDate(a.d, true) : null, t('{0} min', a.min), a.km ? distText(S, a.km) : null, a.note].filter(Boolean).join(' · ')}</div></div>
+      <div className="ss">{[showDate ? fmtDate(a.d, true) : null, sessionClock(a.at), t('{0} min', a.min), a.km ? distText(S, a.km) : null, a.note].filter(Boolean).join(' · ')}</div></div>
     <Icon name="chevronRight" className="chev" />
   </div>
 }

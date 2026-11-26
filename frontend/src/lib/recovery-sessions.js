@@ -13,6 +13,7 @@
 // mergeStampedMap, STAMPED_MAPS), and a removal is a stamped empty entry (`{ _ts }`), never a
 // deleted key, which the other device's copy would bring straight back.
 import { NOTE_MAX } from './history.js'
+import { sessionTimestamp } from './session-time.js'
 
 export const RECOVERY_KINDS = ['sauna', 'cold', 'massage', 'stretch', 'walk', 'other']
 export const RECOVERY_LABEL = { sauna: 'Sauna', cold: 'Ice bath', massage: 'Massage', stretch: 'Mobility', walk: 'Easy walk', other: 'Other recovery' }
@@ -31,7 +32,8 @@ export function readRecovery(entry) {
   const min = Math.round(Number(entry.min))
   if (!Number.isFinite(min) || min < 1) return null
   const note = typeof entry.note === 'string' ? entry.note.trim().slice(0, NOTE_MAX) : ''
-  return { d: entry.d, kind, min: Math.min(RECOVERY_MIN_MAX, min), ...(note ? { note } : {}) }
+  const at = sessionTimestamp(entry.at)
+  return { d: entry.d, kind, min: Math.min(RECOVERY_MIN_MAX, min), ...(at ? { at } : {}), ...(note ? { note } : {}) }
 }
 
 /** Every recovery session, newest day first, as { id, d, kind, min, note? }. */

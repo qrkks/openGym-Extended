@@ -29,6 +29,24 @@ want. Run them from the repository root with Node 22 unless noted.
 Frontend-only helpers (locale checks, bundle size, the service worker stamp) live in
 `frontend/scripts/`, and the API's in `api/scripts/`.
 
+## Local OpenGym Extended APK on Windows
+
+From the repository root, run the following PowerShell command with the revision you want to build.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\android\build-extended.ps1 -Revision 7
+```
+
+Use Node.js, JDK 21, Android SDK Platform 36, and Build Tools 35.0.0 and 36.0.0.
+The script builds the frontend and exercise media, syncs Android, then builds, signs, and verifies
+the APK. Signed builds go in `frontend/android/app/build/local-apks/`.
+
+Run under the Windows account that saved `password.dpapi`. By default the release keystore and
+password file are in the sibling directory `OpenGym-android-signing`. Use `-SigningDirectory`
+for another location or `-KeyAlias` if the keystore basename and key alias differ from
+`opengym-personal`. Pass `-Unsigned` to build without the release key. To update an existing
+installation, use a revision at least as high as the installed build's revision.
+
 ## Release machine only
 
 These touch the licensed full-size animations, which never go into the repository or CI. They

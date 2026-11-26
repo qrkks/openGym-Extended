@@ -138,6 +138,17 @@ describe('the exercise dataset', () => {
 })
 
 describe('search: the everyday version first', () => {
+  it('finds catalogue and custom IDs exactly, preserving leading zeros', async () => {
+    const { EXDB, searchExercises, similarExercises } = await import('./exercises.js')
+    const bench = EXDB.find(e => e.id === '0025')
+    const own = { id: 'm2oy8pg9', n: 'My press' }
+    const list = [own, ...EXDB]
+    expect(searchExercises(list, ' 0025 ')).toEqual([bench])
+    expect(searchExercises(list, '００２５')).toEqual([bench])
+    expect(searchExercises(list, 'M2OY8PG9')).toEqual([own])
+    expect(similarExercises(list, '0025', [bench])).toEqual([])
+  })
+
   it('"leg press" finds the 45° sled leg press before the Smith and one-leg versions', async () => {
     const { EXDB, searchExercises } = await import('./exercises.js')
     expect(searchExercises(EXDB, 'leg press')[0].id).toBe('0739')

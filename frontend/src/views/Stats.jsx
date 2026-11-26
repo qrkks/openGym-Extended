@@ -19,6 +19,7 @@ import RecoveryStatistics from '../components/RecoveryStatistics.jsx'
 import { activityTotals } from '../lib/activities.js'
 import { recoverySessionsOf } from '../lib/recovery-sessions.js'
 import { isInSessionMonth } from '../lib/session-stats-period.js'
+import { workoutLocationOf } from '../lib/workout-location.js'
 import { bwSheet, goalSheet, calendarSheet, dayOverrideSheet, workoutDetailSheet, exerciseHistorySheet, WorkoutRow, bwDeltaColor, weighInsSheet } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import WeightRate from '../components/WeightRate.jsx'
@@ -634,7 +635,14 @@ export default function Stats() {
   // The month overview counts saved sessions, as History does. Progression metrics use countedS.
   const today = todayISO()
   const recoverySessions = useMemo(() => recoverySessionsOf({ recoverySessions: saved.recoverySessions }), [saved.recoverySessions])
-  const monthWorkouts = saved.workouts.filter(w => isInSessionMonth(workoutDay(w), today)).length
+  let monthWorkouts = 0
+  const monthDaysByLocation = { gym: new Set(), home: new Set() }
+  for (const workout of saved.workouts) {
+    const day = workoutDay(workout)
+    if (!isInSessionMonth(day, today)) continue
+    monthWorkouts++
+    monthDaysByLocation[workoutLocationOf(workout)]?.add(day)
+  }
   const monthSports = activityTotals(saved, today.slice(0, 7) + '-01', today).n
   const monthRecovery = recoverySessions.filter(r => isInSessionMonth(r.d, today)).length
   const monthStats = [
@@ -958,6 +966,16 @@ export default function Stats() {
           <span className="l">{t(item.label)}</span>
           <span className="v">{fmtNum(item.count)}</span>
         </button>)}
+        <dl className="stats-month-locations">
+          <div>
+            <dt>{t('Gym days')}</dt>
+            <dd>{fmtNum(monthDaysByLocation.gym.size)}</dd>
+          </div>
+          <div>
+            <dt>{t('Home training days')}</dt>
+            <dd>{fmtNum(monthDaysByLocation.home.size)}</dd>
+          </div>
+        </dl>
       </div>
     </section>
     <div className={'kpis kpis-training' + (bodyOn ? ' two' : '')} data-tour="stats-tiles">

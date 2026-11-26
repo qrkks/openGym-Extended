@@ -112,7 +112,7 @@ describe('missed and moved planned days', () => {
     calendarSheet(mon)
     const el = renderTop()
     const thu = [...el.querySelectorAll('.cal-d.has')].find(b => b.querySelector('span')?.textContent === String(Number(plus(mon, 3).slice(8))))
-    expect(thu.querySelector('i').className).toBe('done moved')
+    expect(thu.querySelector('i.done.workout-mark.moved')).toBeTruthy()
     expect(el.querySelectorAll('.cal-d i.done:not(.moved)').length).toBeGreaterThan(0)
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
     expect(css).toMatch(/\.cal-d i\.miss[^{]*\{[^}]*box-shadow/)

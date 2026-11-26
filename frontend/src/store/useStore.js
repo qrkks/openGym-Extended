@@ -244,6 +244,7 @@ export const DEF = {
   // started from nothing begins with it off (freshState below, v1.3.11): most people weigh in at
   // home in the morning, not at the gym, and the step cost a tap every workout.
   weighIn: true,
+  lastWorkoutLocation: null,
   // The connection banner at the top (components/SyncBanner.jsx, #369/#330). Off hides it; a
   // stuck sync then shows as a dot on Home instead. Defaults on; an older profile without the
   // key reads as on (`!== false`).

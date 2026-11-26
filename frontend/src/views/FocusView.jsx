@@ -18,7 +18,7 @@ import {
 } from '../lib/workout-model.js'
 import { weightIncrement, stepWeight } from '../lib/progression.js'
 import { speedUnitOf, toSpeed, fromSpeed } from '../lib/speed.js'
-import { effortPickerSheet, exerciseDetailSheet, exerciseHistorySheet, exerciseNoteSheet, menuSheet, barWeightSheet } from '../sheets.jsx'
+import { effortPickerSheet, exerciseDetailSheet, exerciseTutorialSheet, exerciseHistorySheet, exerciseNoteSheet, menuSheet, barWeightSheet } from '../sheets.jsx'
 import { baseWeightFor, inventoryFor, loadKindFor, rowLoad } from '../lib/plates.js'
 import { usesBar } from '../lib/bar.js'
 import { plateText } from '../lib/plate-text.js'
@@ -32,7 +32,6 @@ import Glyph from '../components/Glyph.jsx'
 import { Button, Stepper } from '../components/ui.jsx'
 import './FocusView.css'
 import { youtubeSearchUrl } from '../lib/youtube.js'
-import { openExternal } from '../components/CustomMedia.jsx'
 import { isOn } from '../lib/modules.js'
 import CardioEffortChip from '../components/CardioEffortChip.jsx'
 
@@ -266,7 +265,7 @@ export default function FocusView({
         { title: t('Exercise'), items: [
           onProgressionSettings && { icon: 'slider', label: t('Exercise settings'), sub: t('Sets, reps, rest, progression'), onClick: onProgressionSettings },
           mode === 'reps' && { icon: 'plate', label: t('Plate loading'), onClick: () => barWeightSheet(entry.id, { ...(entry.target || {}), id: entry.id }) },
-          youtubeSearchUrl(exOr(entry.id)) && { icon: 'play', label: t('Watch on YouTube'), sub: t('Opens a search for good form'), onClick: () => openExternal(youtubeSearchUrl(exOr(entry.id))) },
+          youtubeSearchUrl(ex) && { icon: 'play', label: t('Search for exercise tutorials'), chevron: true, onClick: () => exerciseTutorialSheet(ex) },
         ] },
         { title: t('Order and supersets'), items: [
           onPairPrev && { icon: 'link', label: t('Make superset with previous'), onClick: onPairPrev },

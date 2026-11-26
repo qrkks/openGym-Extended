@@ -24,6 +24,7 @@
 // never makes a second one, and a removed one is never brought back (the stamp stays).
 import { NOTE_MAX } from './history.js'
 import { hashId } from './weigh-ins.js'
+import { sessionTimestamp } from './session-time.js'
 
 export const SPORTS = ['run', 'ride', 'swim', 'hike', 'row', 'ski', 'football', 'racket', 'ball', 'climb', 'fight', 'yoga', 'dance', 'other']
 export const SPORT_LABEL = {
@@ -74,13 +75,13 @@ export function readActivity(entry) {
   const min = Math.round(Number(entry.min))
   if (!Number.isFinite(min) || min < 1) return null
   const km = Number(entry.km)
-  const at = Number(entry.at)
+  const at = sessionTimestamp(entry.at)
   const title = typeof entry.title === 'string' ? entry.title.trim().slice(0, TITLE_MAX) : ''
   const note = typeof entry.note === 'string' ? entry.note.trim().slice(0, NOTE_MAX) : ''
   return {
     d: entry.d, sport, min: Math.min(ACTIVITY_MIN_MAX, min),
     ...(km > 0 && km < 1000 ? { km: roundKm(km) } : {}),
-    ...(at > 0 ? { at } : {}),
+    ...(at ? { at } : {}),
     ...(title ? { title } : {}),
     ...(note ? { note } : {}),
     src: SOURCES.includes(entry.src) ? entry.src : 'manual',

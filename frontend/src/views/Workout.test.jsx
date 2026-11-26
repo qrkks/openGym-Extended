@@ -598,7 +598,7 @@ describe('Workout set completion flow', () => {
     expect(mocks.startRest).toHaveBeenCalledWith(90, expect.any(Number), expect.objectContaining({ forSet: expect.any(Number) }))
   })
 
-  it('shows workout completion only when no unfinished unit remains', async () => {
+  it('leaves a completed workout open until the user taps Finish and save', async () => {
     await mount([
       exercise('already-done', [true], { asked: true }),
       exercise('final-hold', [false], { asked: true, target: { mode: 'time', sec: 30, weight: 0 } }),
@@ -606,9 +606,16 @@ describe('Workout set completion flow', () => {
 
     await toggleSet(0)
 
-    expect(mocks.workoutCompleteSheet).toHaveBeenCalledOnce()
+    await rerender()
+    expect(mocks.workoutCompleteSheet).not.toHaveBeenCalled()
     expect(mocks.S.active.cur).toBe(1)
     expect(mocks.startRest).not.toHaveBeenCalled()
+    expect(finishWorkout).not.toHaveBeenCalled()
+    const finish = container.querySelector('.whdr-finish')
+    expect(finish.textContent).toBe('Finish and save')
+    await click(finish)
+    expect(finishWorkout).toHaveBeenCalledOnce()
+    expect(finishWorkoutSheet).not.toHaveBeenCalled()
   })
 })
 
@@ -2636,7 +2643,8 @@ describe('collapsing completed workout exercises', () => {
     await toggleSet(0)   // the bench is folded already, so the row's set is the only tick on screen
     await rerender()
     expect(mocks.S.active.cur).toBe(1)
-    expect(mocks.workoutCompleteSheet).toHaveBeenCalledOnce()
+    expect(mocks.workoutCompleteSheet).not.toHaveBeenCalled()
+    expect(container.querySelector('.whdr-finish').textContent).toBe('Finish and save')
     expect(units()[1].querySelector('.wl-summary')).toBeNull()
   })
 
@@ -3654,7 +3662,9 @@ describe('mark all sets done while logging a past workout', () => {
     await act(async () => { menu.sections[1].items.filter(Boolean)[0].onClick() })
     expect(mocks.S.active.entries.every(e => e.sets.every(s => s.done))).toBe(true)
     expect(mocks.S.active.entries.map(e => e.topW)).toEqual([60, 70])
-    expect(mocks.workoutCompleteSheet).toHaveBeenCalledTimes(1)
+    await rerender()
+    expect(mocks.workoutCompleteSheet).not.toHaveBeenCalled()
+    expect(container.querySelector('.whdr-finish').textContent).toBe('Finish and save')
   })
 
   it('is only there for a past workout', async () => {
