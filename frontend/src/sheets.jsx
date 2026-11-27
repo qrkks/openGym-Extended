@@ -3532,7 +3532,7 @@ function DayOverride({ iso, close }) {
         subtitle={t(iso > todayISO() ? 'Planned sport' : 'Record completion')}
         accessory="chevron" onClick={iso > today
           ? () => plannedActivityOptionsSheet(iso, 'sport', sport)
-          : () => { close(); activitySheet({ day: iso, sport }) }} />)}
+          : () => { close(); activitySheet({ day: iso, sport, planned: true }) }} />)}
       {iso <= todayISO() && <div className="item act-row" {...tappable(() => { close(); activitySheet({ day: iso }) })}>
         <span className="lrow-i act-i" aria-hidden="true"><Icon name="figureRun" /></span>
         <div className="grow"><div className="tt">{t('Log an activity')}</div><div className="ss">{t('A run, a ride, a match')}</div></div>
@@ -3579,7 +3579,7 @@ export function plannedActivityOptionsSheet(iso, type, kind) {
   const weekly = type === 'sport' && sportsOnWeekday(state, weekday).includes(kind)
   if (!oneOff && !weekly) return
 
-  const record = () => type === 'sport' ? activitySheet({ day: iso, sport: kind }) : recoverySheet({ day: iso, kind })
+  const record = () => type === 'sport' ? activitySheet({ day: iso, sport: kind, planned: true }) : recoverySheet({ day: iso, kind })
   const cancel = () => {
     if (iso < todayISO() || !datedActivitiesOn(S(), iso, type).includes(kind)) return
     update(s => { s.datedActivityPlan = withDatedActivity(s.datedActivityPlan, iso, type, kind, false) })

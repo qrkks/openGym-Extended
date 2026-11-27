@@ -17,6 +17,8 @@ import { markAllSetsDone } from './lib/backfill.js'
 import { EXDB } from './lib/exercises-data.js'
 import { fmtClock, fmtDate } from './lib/format.js'
 import { activitySheet } from './components/ActivitySheet.jsx'
+import { activitiesOf, activityTotals } from './lib/activities.js'
+import { mergeStates } from './lib/sync-merge.js'
 import { recoverySheet } from './components/RecoverySheet.jsx'
 
 bindUI(useUI)
@@ -302,6 +304,53 @@ describe('dated sports and recovery', () => {
 })
 
 describe('planning and recording a sport', () => {
+  it('counts a planned sport once when its completion is synced from two devices', () => {
+    const today = '2026-09-16'
+    const schedule = { sportPlan: { '3:fight': { on: true } }, activities: {} }
+    install(schedule)
+
+    act(() => plannedActivityOptionsSheet(today, 'sport', 'fight'))
+    tapMenuAction(mountTopSheet(), 'Record completion')
+    tapInTopSheet('Save')
+    const firstDevice = S()
+
+    vi.setSystemTime(new Date(today + 'T12:01:00'))
+    install(schedule)
+    act(() => dayOverrideSheet(today))
+    tapInTopSheet('Boxing & martial artsRecord completion')
+    const form = mountTopSheet()
+    act(() => button(form, '30 min').click())
+    act(() => button(form, 'Save').click())
+    const secondDevice = S()
+
+    expect(Object.keys(firstDevice.activities)).toEqual(Object.keys(secondDevice.activities))
+    expect(activityTotals(mergeStates(firstDevice, secondDevice), today, today)).toMatchObject({ n: 1, min: 30, days: 1 })
+  })
+
+  it('keeps a moved completion and lets the original planned sport be logged again', () => {
+    const today = '2026-09-16'
+    install({ sportPlan: { '3:fight': { on: true } } })
+
+    const complete = () => {
+      act(() => plannedActivityOptionsSheet(today, 'sport', 'fight'))
+      tapMenuAction(mountTopSheet(), 'Record completion')
+      tapInTopSheet('Save')
+    }
+    complete()
+    const [original] = activitiesOf(S())
+    act(() => activitySheet({ id: original.id }))
+    const form = mountTopSheet()
+    act(() => button(form, 'Run').click())
+    act(() => button(form, 'Save').click())
+    expect(activitiesOf(S())).toMatchObject([{ sport: 'run', d: today }])
+    expect(S().activities[original.id]).not.toHaveProperty('d')
+
+    complete()
+    expect(activitiesOf(S()).map(activity => activity.sport).sort()).toEqual(['fight', 'run'])
+    act(() => activitySheet({ day: today, sport: 'fight' }))
+    tapInTopSheet('Save')
+    expect(activitiesOf(S()).filter(activity => activity.sport === 'fight')).toHaveLength(2)
+  })
   it('schedules boxing without changing the routine, then logs it once on that weekday', () => {
     dayAssignSheet(1)
     const picker = mountTopSheet()
