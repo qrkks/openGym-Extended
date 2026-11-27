@@ -11,13 +11,7 @@
 name: Deploy demo to GitHub Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/**'
-      - 'catalogue/**'
-      - 'scripts/catalogue/**'
-      - '.github/workflows/pages.yml'
+  # Paused in Extended; retained for upstream compatibility.
   workflow_dispatch:
 
 permissions:

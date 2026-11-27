@@ -4,8 +4,8 @@
 name: CLA (issue)
 
 on:
-  issue_comment:
-    types: [created]
+  # Paused in Extended; retained for upstream compatibility.
+  workflow_dispatch:
 
 permissions:
   contents: write
