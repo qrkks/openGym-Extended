@@ -81,6 +81,7 @@ const extendedEnglishFallbackKeys = new Set([
   "Back to today",
   "Day options",
   "Search for exercise tutorials",
+  "Video tutorials",
   "Bilibili",
   "Douyin",
   "Exercise ID",

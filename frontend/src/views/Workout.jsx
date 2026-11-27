@@ -35,6 +35,7 @@ import { circuitLine } from '../lib/circuit-copy.js'
 import CircuitCard from '../components/CircuitCard.jsx'
 import { useCircuit } from '../store/useCircuit.js'
 import WorkoutThumb, { hasWorkoutMedia } from '../components/WorkoutThumb.jsx'
+import ExerciseTutorialButton from '../components/ExerciseTutorialButton.jsx'
 import { workoutSettingsSheet } from '../components/WorkoutSettingsSheet.jsx'
 import { SessionMapButton } from '../components/SessionMuscles.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
@@ -944,7 +945,10 @@ function ExerciseBlock({ entryIdx, compact, listed, dense, editing, onToggle, on
     {!dense && !thumb && <Media ex={ex} notes={entry.target?.notes} key={entry.id} compact={compact} minimizable sayAs={exSay} />}
     <div className="row between exhd" style={{ marginBottom: 8 }}>
       {thumb && <WorkoutThumb ex={ex} dense={dense} sayAs={exSay} onExpand={dense ? () => exerciseDetailSheet(ex) : () => update(s => { s.gifSize = 'full' })} />}
-      <div style={{ flex: 1, minWidth: 0, fontSize: (compact || dense) ? 'var(--fs-body)' : 'var(--fs-title3)', fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.2 }} className={exerciseNameClass(ex)}>{exerciseNameFor(ex)}</div>
+      <div className="workout-exercise-heading">
+        <div style={{ fontSize: (compact || dense) ? 'var(--fs-body)' : 'var(--fs-title3)', fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.2 }} className={exerciseNameClass(ex)}>{exerciseNameFor(ex)}</div>
+        <ExerciseTutorialButton ex={ex} />
+      </div>
       <div className="row" style={{ gap: 2, flex: 'none' }}>
         {entry.note && <button className="iconbtn" aria-label={inEx(t('Note'))} title={t('Note')} style={{ color: 'var(--acc-ink)' }}
           onClick={() => exerciseNoteSheet(entryIdx)}><Icon name="note" /></button>}

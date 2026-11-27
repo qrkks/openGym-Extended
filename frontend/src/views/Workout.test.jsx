@@ -9,7 +9,7 @@ import { buildCombinedEntries } from '../lib/session-merge.js'
 import { buildCompletedWorkout } from '../lib/finish-workout.js'
 import { isWarmupRow } from '../lib/workout-model.js'
 import { discardedFor } from '../lib/watch-sync.js'
-import { finishWorkout, finishWorkoutSheet } from '../sheets.jsx'
+import { exerciseTutorialSheet, finishWorkout, finishWorkoutSheet } from '../sheets.jsx'
 import { menuItemsOf } from '../lib/menu-items.js'
 
 // A menu's actions in order, whether it came as one list or in groups (menuSheet `sections`).
@@ -94,6 +94,7 @@ vi.mock('../sheets.jsx', () => ({
   exercisePicker: mocks.exercisePicker,
   exConfigSheet: mocks.exConfigSheet,
   exerciseDetailSheet: vi.fn(),
+  exerciseTutorialSheet: vi.fn(),
   finishWorkout: vi.fn(),
   finishWorkoutSheet: vi.fn(),
   exitWorkoutEdit: vi.fn(),
@@ -1696,6 +1697,16 @@ describe('active exercise swap control', () => {
     expect(mocks.swapActiveWorkoutExercise).toHaveBeenCalledOnce()
     expect(mocks.swapActiveWorkoutExercise).toHaveBeenCalledWith(1)
   })
+})
+
+it.each(['list', 'compact', 'focus'])('opens the current exercise tutorial from the %s card', async workoutView => {
+  await mount([exercise('0043', [false])], 0, { active: { workoutView } })
+  const button = container.querySelector('.exercise-tutorial-button')
+  expect(button.textContent).toBe('Video tutorials')
+  expect(button.getAttribute('aria-label')).toContain('Video tutorials')
+  await click(button)
+  expect(exerciseTutorialSheet).toHaveBeenLastCalledWith(expect.objectContaining({ id: '0043' }))
+  expect(mocks.S.active.entries[0].sets[0].done).toBe(false)
 })
 
 describe('workout focus view', () => {

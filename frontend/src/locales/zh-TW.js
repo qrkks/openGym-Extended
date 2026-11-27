@@ -399,6 +399,7 @@ export default {
   'Back to today': '回到今天',
   'Day options': '當天操作',
   'Search for exercise tutorials': '搜尋動作教學',
+  'Video tutorials': '影片教學',
   'Bilibili': 'B 站',
   'Douyin': '抖音',
   'Exercise ID': '動作 ID',

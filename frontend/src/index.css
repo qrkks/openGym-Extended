@@ -1373,6 +1373,9 @@ button.whdr-location{min-height:24px}
   background:rgba(0,0,0,.55);color:#fff;--icon-stroke:2.4;
 }
 .exhd{align-items:center}
+.workout-exercise-heading{flex:1;min-width:0;overflow-wrap:anywhere}
+.btn.exercise-tutorial-button{min-width:48px;min-height:48px;max-width:100%;padding-inline:4px;text-align:start;white-space:normal}
+.exercise-tutorial-button .icn{flex:none}
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 /* The bar with the session's volume at its end (#774): 12 px tall where the bar is 4, so it takes
