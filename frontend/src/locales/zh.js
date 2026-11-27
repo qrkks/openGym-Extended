@@ -400,6 +400,7 @@ export default {
   'Back to today': '回到今天',
   'Day options': '当天操作',
   'Search for exercise tutorials': '搜索动作教学',
+  'Video tutorials': '视频教程',
   'Bilibili': 'B 站',
   'Douyin': '抖音',
   'Exercise ID': '动作 ID',
