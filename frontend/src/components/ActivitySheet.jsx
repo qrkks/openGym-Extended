@@ -5,7 +5,7 @@ import { t } from '../lib/i18n.js'
 import { fmtDate, fmtNum, todayISO, uid } from '../lib/format.js'
 import { NOTE_MAX } from '../lib/history.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
-import { SPORTS, SPORT_LABEL, SPORT_ICON, SPORT_PRESETS, ACTIVITY_MIN_MAX, activitiesOf, withActivity, activityName } from '../lib/activities.js'
+import { SPORTS, SPORT_LABEL, SPORT_ICON, SPORT_PRESETS, ACTIVITY_MIN_MAX, readActivity, withActivity, activityName } from '../lib/activities.js'
 import { sessionClock, sessionInputStart, sessionInputTime } from '../lib/session-time.js'
 import SessionWhenFields from './SessionWhenFields.jsx'
 import Icon from './Icon.jsx'
@@ -26,12 +26,17 @@ const SOURCE_LINE = {
 const MI = 1.609344
 export const distText = (S, km) => (S?.unit === 'lb' ? t('{0} mi', fmtNum(Math.round(km / MI * 10) / 10)) : t('{0} km', fmtNum(Math.round(km * 10) / 10)))
 
-function ActivityLog({ id = null, day = null, initialSport = null, close }) {
+// A weekly plan and a one-off on the same day already share one slot in the calendar.
+// Saving that slot from either device should likewise address the same activity.
+const plannedRecordId = (day, sport) => `sport-plan:${day}:${sport}`
+
+function ActivityLog({ id = null, day = null, initialSport = null, planned = false, close }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const toast = useUI(s => s.toast)
-  const had = id ? activitiesOf(S).find(a => a.id === id) : null
-  const [recordId] = useState(() => id || 'm' + uid())
+  const existingId = id || (planned ? plannedRecordId(day, initialSport) : null)
+  const had = existingId ? readActivity(S.activities?.[existingId]) : null
+  const [manualId] = useState(() => 'm' + uid())
   const [sport, setSport] = useState(had?.sport || initialSport || 'run')
   const [min, setMin] = useState(had?.min || SPORT_PRESETS[1])
   const [d, setD] = useState(had?.d || day || todayISO())
@@ -41,12 +46,20 @@ function ActivityLog({ id = null, day = null, initialSport = null, close }) {
   const onNoteFocus = useSheetKeyboard(noteRef)
   const save = () => {
     if (!(min >= 1) || d > todayISO()) return
-    update(s => { s.activities = withActivity(s.activities, recordId, { ...(had || {}), d, sport, min, at: sessionInputStart(d, time, had), note: note.trim().slice(0, NOTE_MAX), src: had?.src || 'manual' }) })
+    const isPlanned = planned || (had && existingId === plannedRecordId(had.d, had.sport))
+    const differentSlot = isPlanned && existingId !== plannedRecordId(d, sport)
+    const recordId = differentSlot ? manualId : existingId || manualId
+    const activity = { ...had, d, sport, min, at: sessionInputStart(d, time, had), note: note.trim().slice(0, NOTE_MAX), src: had?.src || 'manual' }
+    update(s => {
+      // An edited completion can move off its slot, leaving the original plan available again.
+      if (differentSlot && had) s.activities = withActivity(s.activities, existingId, null)
+      s.activities = withActivity(s.activities, recordId, activity)
+    })
     close()
     toast(t('Saved'))
   }
   const remove = () => {
-    update(s => { s.activities = withActivity(s.activities, id, null) })
+    update(s => { s.activities = withActivity(s.activities, existingId, null) })
     close()
     toast(t('Activity removed'))
   }
@@ -73,9 +86,9 @@ function ActivityLog({ id = null, day = null, initialSport = null, close }) {
   </>
 }
 
-/** Log a new activity with optional date and sport defaults, or open an existing record. */
-export const activitySheet = ({ id = null, day = null, sport = null } = {}) =>
-  useUI.getState().openSheet(close => <ActivityLog id={id} day={day} initialSport={sport} close={close} />)
+/** Log a new activity, complete a scheduled sport, or open an existing record. */
+export const activitySheet = ({ id = null, day = null, sport = null, planned = false } = {}) =>
+  useUI.getState().openSheet(close => <ActivityLog id={id} day={day} initialSport={sport} planned={planned} close={close} />)
 
 /** One activity as a list row, the way History lists a workout. */
 export function ActivityRow({ a, showDate = true }) {
