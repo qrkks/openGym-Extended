@@ -9,7 +9,7 @@
 // a URL anyone can fetch. This file only ever names files by drawing id; it never reads one.
 //
 // The packs: one per quality and figure, `anim-<px>-male` / `anim-<px>-female`. A figure's pack
-// holds every drawing that figure shows: each catalogue exercise's drawing for that figure, or its
+// holds every animation that figure shows: each animated exercise's drawing for that figure, or its
 // own when it is drawn once (those are in both packs). scripts/media/make-pack-manifests.mjs writes
 // them from the catalogue with the same rule (packDrawingId below). Inside a pack a drawing sits at
 // `<packId>/<drawing id>.webp`, so two packs installed side by side never share a path.
@@ -59,30 +59,30 @@ export function wantedQuality(choice, device = {}, builtin = BUILTIN_PX) {
 
 /**
  * The drawing an exercise shows for a figure, the same rule as lib/exercises.js gifSrc: its twin
- * drawn on that figure when it has one, else its own. The file name, without its extension.
+ * drawn on that figure when it has one, else its own. The file name without its extension, or null
+ * when the exercise has no animation.
  */
 export function packDrawingId(ex, figure) {
-  const twin = figure === 'female' ? ex?.fv : figure === 'male' ? ex?.mv : null
-  if (twin) return twin
-  const own = typeof ex?.gif === 'string' && ex.gif ? ex.gif.replace(/\.[a-z0-9]+$/i, '') : ex?.id
-  return own ? String(own) : null
+  if (!ex?.gif) return null
+  const twin = figure === 'female' ? ex.fv : figure === 'male' ? ex.mv : null
+  return twin || ex.gif.replace(/\.[a-z0-9]+$/i, '')
 }
 
 /**
- * Where an animation comes from, best first, never empty:
+ * Where an animation comes from, best first:
  *   1. the chosen quality's pack for this figure, if installed,
  *   2. every smaller pack of this figure that is installed, sharpest first,
  *   3. the built-in file (`builtin`, lib/exercises.js gifSrc).
  * `installed` maps a pack id to the base its files are read from (Capacitor.convertFileSrc of the
- * native path); a pack not in it, or without a base, is not there. 'still' gives no animation at
- * all: `{ still: true, sources: [] }`, and the caller shows the still.
+ * native path); a pack not in it, or without a base, is not there. The 'still' choice and
+ * exercises without an animation return `{ still: true, sources: [] }`.
  */
 export function clipSources({ ex, figure, choice, device, installed = {}, builtin, builtinPx = BUILTIN_PX }) {
-  const want = wantedQuality(choice, device, builtinPx)
-  if (want === 'still') return { still: true, sources: [] }
-  const sources = []
   const id = packDrawingId(ex, figure)
-  if (id && want !== 'builtin') {
+  const want = wantedQuality(choice, device, builtinPx)
+  if (!id || want === 'still') return { still: true, sources: [] }
+  const sources = []
+  if (want !== 'builtin') {
     for (const px of [...PACK_QUALITIES].reverse()) {
       if (px > want || px <= builtinPx) continue
       const base = installed[packId(px, figure)]

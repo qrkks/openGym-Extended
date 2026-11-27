@@ -21,7 +21,7 @@ describe('Play asset packs', () => {
     for (const p of plan) {
       const ids = p.parts.flatMap(x => x.files.map(f => f.id))
       expect(ids).toEqual(ios[p.id])
-      expect(p.parts[0].files[0].src).toBe(`/media/480/${ids[0]}.webp`)
+      expect(p.parts[0].files[0].src).toBe(path.join(srcFor(480), `${ids[0]}.webp`))
     }
   })
 
@@ -45,7 +45,7 @@ describe('Play asset packs', () => {
   })
 
   it('refuse a pack with a drawing missing', () => {
-    expect(() => planPacks({ qualities: [480], srcFor, sizeOf: f => (f.endsWith('/0001.webp') ? null : 1) })).toThrow(/missing 480 px drawing 0001/)
+    expect(() => planPacks({ qualities: [480], srcFor, sizeOf: f => (path.basename(f) === '0001.webp' ? null : 1) })).toThrow(/missing 480 px drawing 0001/)
   })
 
   it('a test set keeps the drawing the app probes a pack by', () => {

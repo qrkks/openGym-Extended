@@ -59,7 +59,9 @@ describe('packDrawingId', () => {
     const { gifSrc } = await import('./exercises.js')
     for (const ex of EXDB) {
       for (const fig of ['male', 'female']) {
-        expect(gifSrc(ex, fig).split('/').pop().replace(/\.(mp4|webp)$/, ''), ex.id + ' ' + fig).toBe(packDrawingId(ex, fig))
+        const src = gifSrc(ex, fig)
+        const id = src ? src.split('/').pop().replace(/\.(mp4|webp)$/, '') : null
+        expect(id, ex.id + ' ' + fig).toBe(packDrawingId(ex, fig))
       }
     }
   })
@@ -89,6 +91,11 @@ describe('clipSources', () => {
   })
   it('still only: no animation at all, the caller shows the still', () => {
     expect(clipSources({ ex: male, figure: 'male', choice: 'still', installed: all('male'), builtin })).toEqual({ still: true, sources: [] })
+  })
+  it('uses the still for a catalogue illustration even when a pack is installed', () => {
+    const ex = EXDB.find(e => e.id === '90002')
+    expect(packDrawingId(ex, 'male')).toBeNull()
+    expect(clipSources({ ex, figure: 'male', choice: 720, installed: all('male') })).toEqual({ still: true, sources: [] })
   })
   it('auto follows the device: a phone reads up to 360, a tablet up to 720', () => {
     const p = clipSources({ ex: once, figure: 'male', choice: 'auto', device: phone, installed: all('male'), builtin })

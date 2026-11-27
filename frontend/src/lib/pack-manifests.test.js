@@ -5,27 +5,31 @@ import { PACK_QUALITIES, packId, packDrawingId, clipSources } from './anim-quali
 import { gifSrc } from './exercises.js'
 
 /* The asset packs scripts/media/make-pack-manifests.mjs writes, from the catalogue's names alone:
-   every exercise the app shows resolves inside its figure's pack, at every quality. */
+   every animated exercise resolves inside its figure's pack, at every quality. */
 const { packs, summary } = buildPacks(EXDB)
 const byId = Object.fromEntries(packs.map(p => [p.id, p]))
+const animated = EXDB.filter(ex => ex.gif)
 
 describe('the packs', () => {
   it('one per quality and figure', () => {
     expect(packs.map(p => p.id).sort()).toEqual(PACK_QUALITIES.flatMap(px => [packId(px, 'female'), packId(px, 'male')]).sort())
     expect(Object.keys(summary.packs)).toHaveLength(10)
   })
-  it('every catalogue exercise is in its figure’s pack, at every quality', () => {
+  it('includes every animated exercise and omits static illustrations at every quality', () => {
     for (const px of PACK_QUALITIES) {
       for (const figure of ['male', 'female']) {
         const ids = new Set(byId[packId(px, figure)].ids)
-        for (const ex of EXDB) expect(ids.has(packDrawingId(ex, figure)), `${ex.id} ${figure} ${px}`).toBe(true)
+        for (const ex of EXDB) {
+          const id = packDrawingId(ex, figure)
+          expect(ids.has(id ?? ex.id), `${ex.id} ${figure} ${px}`).toBe(!!ex.gif)
+        }
       }
     }
   })
   it('exercises drawn once are in both packs; a twin only in its own figure’s', () => {
     const male = new Set(drawingsFor(EXDB, 'male')), female = new Set(drawingsFor(EXDB, 'female'))
     let once = 0, twins = 0
-    for (const ex of EXDB) {
+    for (const ex of animated) {
       if (!ex.fv && !ex.mv) { once++; expect(male.has(ex.id) && female.has(ex.id), ex.id).toBe(true) }
       if (ex.fv) { twins++; expect(female.has(ex.fv)).toBe(true); expect(male.has(ex.fv), ex.fv + ' is a female drawing').toBe(false) }
     }
@@ -37,7 +41,7 @@ describe('the packs', () => {
     const p = byId['anim-720-female']
     const dest = new Set(p.manifest.fileSelectors.map(s => s.fileDestination))
     const base = 'http://localhost/_capacitor_file_/x'
-    for (const ex of EXDB.slice(0, 500)) {
+    for (const ex of animated.slice(0, 500)) {
       const src = clipSources({ ex, figure: 'female', choice: 720, installed: { [p.id]: base + '/anim-720-female' }, builtin: gifSrc(ex, 'female') }).sources[0]
       expect(dest.has(src.slice(base.length + 1)), ex.id).toBe(true)
     }

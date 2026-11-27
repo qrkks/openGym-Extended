@@ -109,26 +109,28 @@ describe('Library exercise-name casing per language', () => {
   }
 })
 
-// The header counts the catalogue, and from the first exercise of your own, those too (owner
+// The header counts catalogue animations, and from the first exercise of your own, those too (owner
 // request for v1.3.10): "1324 animated exercises + 5 of your own". It has to stay one line on a
 // phone, so it runs under the title row at full width, never wraps, and ellipsizes as a last resort.
 describe('Library header count', () => {
   const sub = host => host.querySelector('.hdr .sub').textContent
+  const animatedCount = EXDB.filter(ex => ex.gif).length
   const own = n => Array.from({ length: n }, (_, i) => ({ id: 'c' + i, n: 'my move ' + i, bp: 'chest', eq: '', custom: true }))
   afterEach(() => _setLangState('en', {}, null, null))
 
-  it('shows only the catalogue while you have no exercises of your own', () => {
-    expect(sub(render())).toBe(`${EXDB.length} exercises with animations`)
+  it('counts only the animated catalogue entries while you have no exercises of your own', () => {
+    expect(animatedCount).toBeLessThan(EXDB.length)
+    expect(sub(render())).toBe(`${animatedCount} exercises with animations`)
   })
 
   it('adds "+ 1 of your own" for a single custom exercise', () => {
     mocks.S.customEx = own(1)
-    expect(sub(render())).toBe(`${EXDB.length} animated exercises + 1 of your own`)
+    expect(sub(render())).toBe(`${animatedCount} animated exercises + 1 of your own`)
   })
 
   it('adds the count for several custom exercises', () => {
     mocks.S.customEx = own(5)
-    expect(sub(render())).toBe(`${EXDB.length} animated exercises + 5 of your own`)
+    expect(sub(render())).toBe(`${animatedCount} animated exercises + 5 of your own`)
   })
 
   it('uses the language\'s own plural forms (Russian: 1 своё, 2 своих, 5 своих)', async () => {
@@ -141,9 +143,8 @@ describe('Library header count', () => {
     act(() => { mounted.splice(0).forEach(root => root.unmount()) })
     mocks.S.customEx = own(5)
     const five = sub(render())
-    expect(one).toContain(String(EXDB.length))
-    expect(five).toBe(forms.many.replace('{0}', '5').replace('{1}', String(EXDB.length)))
-    expect(one).not.toBe(five.replace('5', '1'))
+    expect(one).toBe(ru['{1} animated exercises + 1 of your own'].replace('{1}', String(animatedCount)))
+    expect(five).toBe(forms.many.replace('{0}', '5').replace('{1}', String(animatedCount)))
   })
 
   it('keeps the subtitle on one line on wider screens, clipping with an ellipsis', () => {
