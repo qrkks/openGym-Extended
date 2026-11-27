@@ -14,22 +14,25 @@ const backend = process.env.API_TARGET || 'http://127.0.0.1:3000'
 // presenting the expected Origin here covers the ones that don't send it. Match your .env if you
 // changed ORIGIN: API_ORIGIN=https://gym.example.com npm run dev
 const apiOrigin = process.env.API_ORIGIN || 'http://localhost:8080'
-// Exercise media: served straight from catalogue/media in dev (see catalogueMedia below), or
-// proxied to a server of your choice with MEDIA_TARGET.
+// Serve bundled illustrations locally. The licensed media can also come from MEDIA_TARGET.
 const media = process.env.MEDIA_TARGET
 const catalogueMedia = {
   name: 'opengym-catalogue-media',
   configureServer(server) {
-    if (media) return
     const dirs = { '/exercise-media/still/': ['still', '.webp'], '/exercise-media/clip/': ['clip', '.mp4'] }
     const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '../catalogue/media')
     server.middlewares.use((req, res, next) => {
-      const prefix = Object.keys(dirs).find(p => req.url.startsWith(p))
+      const url = req.url.split('?')[0]
+      const prefix = Object.keys(dirs).find(p => url.startsWith(p))
       if (!prefix) return next()
       const [dir, ext] = dirs[prefix]
-      const name = decodeURIComponent(req.url.slice(prefix.length).split('?')[0])
-      const file = join(root, dir, name)
-      if (!/^\d{4,5}\.(webp|mp4)$/.test(name) || !name.endsWith(ext) || !existsSync(file)) { res.statusCode = 404; return res.end() }
+      const name = url.slice(prefix.length)
+      const bundled = join(server.config.publicDir, 'exercise-media', dir, name)
+      const valid = /^\d{4,5}\.(webp|mp4)$/.test(name) && name.endsWith(ext)
+      const hasBundled = valid && existsSync(bundled)
+      if (media && !hasBundled) return next()
+      const file = hasBundled ? bundled : join(root, dir, name)
+      if (!valid || !existsSync(file)) { res.statusCode = 404; return res.end() }
       res.setHeader('Content-Type', ext === '.mp4' ? 'video/mp4' : 'image/webp')
       res.end(readFileSync(file))
     })

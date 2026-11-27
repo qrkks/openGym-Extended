@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
+import { setLang } from './lib/i18n.js'
 import { exercisePicker } from './sheets.jsx'
 import Library from './views/Library.jsx'
 import Muscles from './views/Muscles.jsx'
@@ -47,6 +48,34 @@ beforeEach(() => {
 afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
 
 describe('exercise list or cards', () => {
+  it('finds both neutral-grip front raises in Chinese and shows their own pictures and steps', async () => {
+    await setLang('zh', false)
+    try {
+      const host = render(<Library />)
+      const input = host.querySelector('.search input')
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '对握前平举')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      const variants = [
+        ['90001', '哑铃坐姿对握前平举', '坐在平凳上'],
+        ['90002', '上斜凳坐姿对握前平举（后仰位）', '背部贴住靠垫'],
+      ]
+      for (const [id, name, setup] of variants) {
+        const button = [...host.querySelectorAll('.item-open')].find(b => b.querySelector('.tt').textContent === name)
+        expect(button).toBeDefined()
+        expect(button.parentElement.querySelector('.thumb').getAttribute('src')).toBe(`exercise-media/still/${id}.webp`)
+        act(() => button.click())
+        const detail = renderTop()
+        expect(detail.querySelector('.exmedia img').getAttribute('src')).toBe(`exercise-media/still/${id}.webp`)
+        expect(detail.querySelector('.exmedia video, .gifhint')).toBeNull()
+        expect(detail.querySelector('.steps-list li').textContent).toContain(setup)
+      }
+    } finally {
+      await act(() => setLang('en'))
+    }
+  })
+
   it('Library: a list until the button beside the search turns the cards on, and back', () => {
     const host = render(<Library />)
     expect(isCards(host)).toBe(false)

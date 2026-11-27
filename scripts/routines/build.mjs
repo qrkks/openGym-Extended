@@ -7,7 +7,7 @@
 //
 // --staging marks every page noindex and shows a banner. --lite also writes the catalogue the
 // submit service validates against (service/server.mjs). The exercise stills copied into media/
-// are the licensed 180 px ones, and only those a page shows (NOTICE.md).
+// are limited to the ones a page shows (see NOTICE.md for the licensed stills).
 import fs from 'node:fs'
 import path from 'node:path'
 import { validateRepo, ROOT } from './validate.mjs'
@@ -87,8 +87,12 @@ export function build(opts, root = ROOT) {
   }
   const names = loadNames(path.join(root, 'catalogue'), [...allIds])
 
-  // The licensed stills: 180 px, only the ones these pages show, and the notice beside them.
-  for (const id of allIds) fs.copyFileSync(path.join(root, 'catalogue/media/still', id + '.webp'), path.join(out, 'media', id + '.webp'))
+  for (const id of allIds) {
+    const name = id + '.webp'
+    const original = path.join(root, 'frontend/public/exercise-media/still', name)
+    const source = fs.existsSync(original) ? original : path.join(root, 'catalogue/media/still', name)
+    fs.copyFileSync(source, path.join(out, 'media', name))
+  }
   fs.copyFileSync(path.join(root, 'catalogue/media/NOTICE.md'), path.join(out, 'media/NOTICE.md'))
 
   // Module imports carry the same stamp as the pages' own links, so a new build is never half cached.

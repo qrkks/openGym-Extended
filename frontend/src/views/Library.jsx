@@ -9,7 +9,7 @@ import { activeProfile, exAvailable } from '../lib/equipment.js'
 import { NotHereButton } from '../components/MachinePicker.jsx'
 import { bestWeightFor } from '../lib/history.js'
 import { fmtNum, exCount, exerciseNameText } from '../lib/format.js'
-import { t, tn, exerciseNameFor, exerciseNameClass } from '../lib/i18n.js'
+import { t, exerciseNameFor, exerciseNameClass } from '../lib/i18n.js'
 import { said } from '../lib/a11y-name.js'
 import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
@@ -103,9 +103,7 @@ export default function Library() {
         {/* Bodyweight skill chains, easiest to hardest (components/Ladders.jsx). */}
         <Button size="sm" variant="tinted" icon="stairs" onClick={laddersSheet} data-ladders>{t('Ladders')}</Button>
       </div>
-      <div className="sub lib-count">{ownCount
-        ? tn('{1} animated exercises + 1 of your own', '{1} animated exercises + {0} of your own', ownCount, EXDB.length)
-        : t('{0} exercises with animations', EXDB.length)}</div>
+      <div className="sub lib-count">{exCount(EXDB.length + ownCount)}</div>
     </div>
     <div className="search-row" data-tour="lib-search" style={{ marginBottom: 10 }}><div className={'search' + (narrowed ? ' has-count' : '') + (q ? ' has-clear' : '')}><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
       <input className="input" placeholder={t('Search by name or ID')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} />

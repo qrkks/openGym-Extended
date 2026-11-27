@@ -544,10 +544,14 @@ export function clipsFor (S, packs = animPacks().packs || {}) {
   const out = [], seen = new Set()
   for (const e of A.entries) {
     const ex = e && EXIDX[e.id]
-    if (!ex || seen.has(e.id) || !ex.gif) continue
+    if (!ex || seen.has(e.id) || (!ex.img && !ex.gif)) continue
     seen.add(e.id)
     const s = imgSrc(ex, figure)
     const still = inPackage(s, /\.(webp|jpe?g|png)$/i) ? { still: s } : {}
+    if (!ex.gif) {
+      if (still.still) out.push({ exId: e.id, ...still })
+      continue
+    }
     const drawing = packDrawingId(ex, figure)
     const path = gifSrc(ex, figure)
     const wear = wearClip(path) ? { wear: path } : {}

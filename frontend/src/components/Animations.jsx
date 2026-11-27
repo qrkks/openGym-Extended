@@ -24,8 +24,9 @@ export const useAnimPacks = () => useSyncExternalStore(subscribe, getState, getS
  */
 export function useAnimSources(ex, figure) {
   const packs = useAnimPacks()
-  const builtin = ex?.gif ? gifSrc(ex, figure) : null
-  if (!MOBILE) return { still: false, sources: builtin ? [builtin] : [] }
+  if (!ex?.gif) return { still: true, sources: [] }
+  const builtin = gifSrc(ex, figure)
+  if (!MOBILE) return { still: false, sources: [builtin] }
   const choice = packs.available ? packs.prefs.choice : (packs.prefs.choice === 'still' ? 'still' : 'builtin')
   return clipSources({ ex, figure, choice, device: deviceInfo(), installed: installedBases(packs), builtin })
 }

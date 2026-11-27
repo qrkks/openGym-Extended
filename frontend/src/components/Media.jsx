@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { imgSrc, gifSrc, isVideoSrc, isCustomEx, figureOf } from '../lib/exercises.js'
+import { imgSrc, isVideoSrc, isCustomEx, figureOf } from '../lib/exercises.js'
 import { MOBILE } from '../lib/mobile.js'
 import { useStore } from '../store/useStore.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
@@ -29,11 +29,12 @@ export default function Media(p) {
   const custom = isCustomEx(p.ex)
   const own = useOwnMedia(p.ex)
   const links = youtubeLinks(p.notes).filter(url => !custom || youtubeId(url) !== youtubeId(p.ex?.url))
-  // Yours or the animation, whichever the exercise shows first, with a switch on the picture.
-  const flip = own && p.ex?.gif ? <OwnMediaFlip exId={p.ex.id} showing={own.show} /> : null
+  // Yours or the catalogue media, with a switch on the picture.
+  const hasBuiltinMedia = !!(p.ex?.img || p.ex?.gif)
+  const flip = own && hasBuiltinMedia ? <OwnMediaFlip exId={p.ex.id} showing={own.show} animated={!!p.ex.gif} /> : null
   return <>
     {custom ? <CustomMedia {...p} />
-      : own && (own.show === 'own' || !p.ex?.gif)
+      : own && (own.show === 'own' || !hasBuiltinMedia)
         ? <div className="own-wrap"><CustomMedia {...p} ex={{ ...p.ex, custom: true, media: own.m, url: undefined }} />{flip}</div>
         : own ? <div className="own-wrap"><BuiltinMedia {...p} />{flip}</div> : <BuiltinMedia {...p} />}
     {(!p.minimizable || size !== 'off') && links.map(url => <LinkCard key={url} url={url} compact={p.compact} mini={p.minimizable && size === 'mini'} />)}
@@ -65,10 +66,10 @@ function BuiltinMedia({ ex, id, compact, minimizable, sayAs }) {
   const sourcesKey = anim.sources.join('|')
   const [tried, setTried] = useState({ key: sourcesKey, i: 0 })
   const at = tried.key === sourcesKey ? tried.i : 0
-  const gif = anim.sources[Math.min(at, Math.max(0, anim.sources.length - 1))] || gifSrc(ex, body)
-  const clip = ex.gif && isVideoSrc(gif) ? gif : null
+  const gif = anim.sources[at]
+  const clip = isVideoSrc(gif) ? gif : null
   const clipSrc = useClipInMemory(clip)
-  if (!ex.gif) return null
+  if (!ex.img && !ex.gif) return null
   if (minimizable && gifSize === 'off') return null
   const mini = minimizable && gifSize === 'mini'
   const toggleSize = e => { e.stopPropagation(); update(s => { s.gifSize = mini ? 'full' : 'mini' }) }

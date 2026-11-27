@@ -14,6 +14,7 @@ files, so a fix merged here is in the next release for everyone.
 | `exercises/<id>.json` | One exercise in English: name, body part, equipment, muscles, description, steps |
 | `i18n/<lang>.json` | Translations: `{ "<id>": { "name", "description", "instructions" } }` |
 | `media/still/<id>.webp`, `media/clip/<id>.mp4` | The picture and animation (180 px). Licensed, not editable, see below |
+| `../frontend/public/exercise-media/still/<id>.webp` | An original illustration bundled with the app for a `stillOnly` exercise |
 | `browse/` | Generated overview pages. Don't edit, they are rebuilt |
 
 The id is the exercise's permanent number. Workouts, routines and records store it, so **an id is
@@ -46,6 +47,9 @@ Open `exercises/<id>.json` (the browse pages link straight to it) and press the 
   [`scripts/catalogue/validate.mjs`](../scripts/catalogue/validate.mjs). The app filters, translates
   and draws the muscle map from them, so a new word needs app support first. Ask in an issue.
 - **description**: one or two sentences on what the movement is and what it trains.
+- **stillOnly** (optional): `true` for an exercise with one original WebP illustration and no
+  animation or figure variants. Add the illustration (up to 180 px per side) under
+  `frontend/public/exercise-media/still/`.
 - **instructions**: 4 to 7 short steps, second person ("Brace your core..."). No em dashes.
 - **hold** (optional): `true` for an exercise that is only ever held, never repeated: a plank, a
   wall sit, a lever, a hang. Added to a workout or a routine, it starts as a timed hold. Leave it

@@ -701,7 +701,7 @@ export function planPrintHTML(S, owner, { routineId, probe = false, pictures = n
     for (const r of routines) for (const e of r.ex || []) if (isPrintPicture(pictures[e.id])) pics[e.id] = pictures[e.id]
   }
   const grid = Object.keys(pics).length > 0
-  const credit = grid && Object.keys(pics).some(id => EXIDX[id] && !isCustomEx(EXIDX[id])) ? MEDIA_CREDIT : ''
+  const credit = grid && Object.keys(pics).some(id => EXIDX[id]?.gif && !isCustomEx(EXIDX[id])) ? MEDIA_CREDIT : ''
   const lead = routineId ? '' : `<h3 class="sec-h">${esc(t('Routines'))}</h3>`
   const one = (r, i) => {
     const o = { bare: !!single, speedUnit, ticks: !!single, lead: i === 0 ? lead : '', m, key: 'r' + i, state: S }

@@ -191,7 +191,8 @@ export function searchScore(exercise, query) {
 const ENV = import.meta.env || {}
 // Under their own folder since v1.4.0: a docker-compose.yml from before then still mounts the old
 // dataset's media over img/ and gif/, and would hide the catalogue's files if they lived there.
-const IMG_BASE = ENV.VITE_IMG_BASE || 'exercise-media/still/'
+const LOCAL_STILL_BASE = 'exercise-media/still/'
+const IMG_BASE = ENV.VITE_IMG_BASE || LOCAL_STILL_BASE
 const GIF_BASE = ENV.VITE_GIF_BASE || 'exercise-media/clip/'
 // The animations are MP4 loops, except in the Android release: there they are animated WebP
 // (VITE_CLIP_EXT=webp, staged from APP_MEDIA_DIR), shown as a plain image. The WebView's video
@@ -207,7 +208,7 @@ export const figureOf = S => (S?.exFigure === 'female' || S?.exFigure === 'male'
   ? S.exFigure
   : (S?.body === 'female' ? 'female' : 'male')
 const drawing = (ex, figure) => (figure === 'female' ? ex.fv : figure === 'male' ? ex.mv : null) || null
-export const imgSrc = (ex, figure) => IMG_BASE + (drawing(ex, figure) ? drawing(ex, figure) + '.webp' : ex.img)
+export const imgSrc = (ex, figure) => (ex.gif ? IMG_BASE : LOCAL_STILL_BASE) + (drawing(ex, figure) ? drawing(ex, figure) + '.webp' : ex.img)
 const clipFile = f => (CLIP_EXT !== '.mp4' && f.endsWith('.mp4') ? f.slice(0, -4) + CLIP_EXT : f)
 export const gifSrc = (ex, figure) => GIF_BASE + clipFile(drawing(ex, figure) ? drawing(ex, figure) + '.mp4' : ex.gif)
 // The catalogue's animations are short MP4 loops; a fork's or an older build's may still be GIFs.

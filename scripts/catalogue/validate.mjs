@@ -34,7 +34,7 @@ export const NEEDS = list('bench, pull-up bar')
 export const MACHINE_EQUIPMENT = list('leverage machine, sled machine, smith machine, assisted')
 export const MACHINE_KINDS = list('leg-press, hack-squat, squat-machine, belt-squat, leg-extension, leg-curl, calf-raise, hip-thrust, hip-abduction, glute-machine, chest-press, pec-deck, shoulder-press, lateral-raise, triceps-machine, lat-pulldown, seated-row, t-bar-row, biceps-curl, back-extension, smith, assisted-pullup, ab-machine, push-sled, cardio, pilates, other, none')
 export const LANGS = list('ar, bn, cs, da, de, es, fa, fr, hi, hu, it, ko, pl, pt, pt-BR, ru, sv, th, tr, uk, zh, zh-TW')
-const KEYS = ['id', 'name', 'bodyPart', 'equipment', 'machineKind', 'target', 'secondaryMuscles', 'category', 'hold', 'track', 'needs', 'description', 'instructions', 'muscleMap', 'femaleVariant', 'maleVariant', 'variantOf', 'textSource']
+const KEYS = ['id', 'name', 'bodyPart', 'equipment', 'machineKind', 'target', 'secondaryMuscles', 'category', 'hold', 'track', 'needs', 'stillOnly', 'description', 'instructions', 'muscleMap', 'femaleVariant', 'maleVariant', 'variantOf', 'textSource']
 const I18N_KEYS = ['name', 'description', 'instructions']
 
 export function validateCatalogue(dir) {
@@ -51,6 +51,12 @@ export function validateCatalogue(dir) {
     if (e.id !== f.slice(0, -5)) say(file, `"id" must be "${f.slice(0, -5)}"`)
     for (const k of Object.keys(e)) if (!KEYS.includes(k)) say(file, `unknown field "${k}"`)
     exercises.push(e)
+    if (e.stillOnly != null) {
+      if (e.stillOnly !== true || e.variantOf || e.femaleVariant || e.maleVariant)
+        say(file, '"stillOnly" is true for an exercise with one illustration and no animation or figure variants')
+      const original = path.join(dir, '../frontend/public/exercise-media/still', f.replace(/\.json$/, '.webp'))
+      if (!fs.existsSync(original)) say(file, 'missing illustration in frontend/public/exercise-media/still/')
+    }
     if (e.variantOf) continue // a drawing of another exercise: no text of its own
     if (!isText(e.name) || e.name !== e.name.toLowerCase()) say(file, '"name" must be lowercase text without surrounding spaces')
     if (!BODY_PARTS.includes(e.bodyPart)) say(file, `"bodyPart" must be one of: ${BODY_PARTS.join(', ')}`)

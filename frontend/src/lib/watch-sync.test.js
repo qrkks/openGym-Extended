@@ -280,6 +280,13 @@ describe('the workout\'s animations for the watch', () => {
     const female = clipsFor({ ...state(), body: 'female' }, {})
     for (const c of female) expect(c.still).toBe(imgSrc(EXIDX[c.exId], 'female'))
   })
+
+  it('sends a bundled illustration without asking the watch for an animation', async () => {
+    const { clipsFor } = await import('./watch-sync.js')
+    const packs = { 'anim-240-male': { state: 'ready' } }
+    const workout = { active: { entries: [{ id: '90001' }] } }
+    expect(clipsFor(workout, packs)).toEqual([{ exId: '90001', still: 'exercise-media/still/90001.webp' }])
+  })
 })
 
 describe('the sync cases on the phone', () => {

@@ -1,0 +1,22 @@
+{
+  "id": "90001",
+  "name": "seated neutral-grip dumbbell front raise",
+  "bodyPart": "shoulders",
+  "equipment": "dumbbell",
+  "target": "front delts",
+  "secondaryMuscles": [
+    "upper chest"
+  ],
+  "category": "strength",
+  "needs": ["bench"],
+  "stillOnly": true,
+  "description": "An upright seated front raise with a dumbbell in each hand and palms facing each other. It primarily trains the front delts.",
+  "instructions": [
+    "Sit upright on a flat bench with both feet planted on the floor.",
+    "Hold a dumbbell at each side with your palms facing in and your elbows slightly bent.",
+    "Raise both dumbbells forward together to about shoulder height. Keep your palms facing each other and your wrists straight.",
+    "Keep your torso still and avoid shrugging as you pause briefly at the top.",
+    "Lower both dumbbells slowly back to your sides."
+  ],
+  "textSource": "opengym"
+}

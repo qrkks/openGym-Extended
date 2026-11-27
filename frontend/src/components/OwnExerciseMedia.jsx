@@ -46,7 +46,7 @@ export default function OwnExerciseMedia({ ex }) {
     </Row>
     {m && <Row icon="image" iconTint="var(--blue)" title={t('Show first')}>
       <Segmented value={own.show} onChange={v => update(s => { setExMediaShow(s, ex.id, v) })}
-        options={[{ value: 'own', label: t('Yours') }, { value: 'stock', label: t('Animation') }]} />
+        options={[{ value: 'own', label: t('Yours') }, { value: 'stock', label: ex.gif ? t('Animation') : t('Photo') }]} />
     </Row>}
     <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={onFile} />
     {warning && <div className="small dim cmf-note">{warning}</div>}
@@ -54,13 +54,14 @@ export default function OwnExerciseMedia({ ex }) {
   </div>
 }
 
-/** The little switch on the picture itself: flip between yours and the animation. */
-export function OwnMediaFlip({ exId, showing }) {
+/** The little switch on the picture itself: flip between yours and the catalogue media. */
+export function OwnMediaFlip({ exId, showing, animated }) {
   const update = useStore(s => s.update)
   const toStock = showing === 'own'
+  const stockLabel = animated ? t('Animation') : t('Photo')
   return <button type="button" className="own-flip" data-swipe-ignore
-    aria-label={toStock ? t('Show the animation') : t('Show yours')}
+    aria-label={toStock ? (animated ? t('Show the animation') : stockLabel) : t('Show yours')}
     onClick={e => { e.stopPropagation(); update(s => { setExMediaShow(s, exId, toStock ? 'stock' : 'own') }) }}>
-    <Icon name={toStock ? 'play' : 'camera'} />{toStock ? t('Animation') : t('Yours')}
+    <Icon name={toStock ? (animated ? 'play' : 'image') : 'camera'} />{toStock ? stockLabel : t('Yours')}
   </button>
 }

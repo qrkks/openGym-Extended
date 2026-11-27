@@ -1,0 +1,21 @@
+{
+  "id": "90002",
+  "name": "incline seated neutral-grip dumbbell front raise",
+  "bodyPart": "shoulders",
+  "equipment": "dumbbell",
+  "target": "front delts",
+  "secondaryMuscles": [
+    "upper chest"
+  ],
+  "category": "strength",
+  "stillOnly": true,
+  "description": "A neutral-grip front raise performed with your back supported by an incline bench. It primarily trains the front delts.",
+  "instructions": [
+    "Set an adjustable bench to an incline. Sit facing up with your back against the pad and both feet on the floor.",
+    "Let a dumbbell hang at each side with your palms facing in and your elbows slightly bent.",
+    "Raise both dumbbells forward together until your hands are about level with your shoulders, or stop sooner if needed for a comfortable range.",
+    "Keep your back against the pad, wrists straight and palms facing each other through the lift.",
+    "Lower the weights slowly to the starting position without letting the arms swing behind you."
+  ],
+  "textSource": "opengym"
+}

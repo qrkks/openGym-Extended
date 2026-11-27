@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { exerciseHistory, HISTORY_SESSIONS, bestSetFor } from './exercise-history.js'
 import { EXDB } from './exercises-data.js'
+import { canonicalExId } from './exercises.js'
 import { estimate1RM, e1rmSeries } from './onerm.js'
 import { lastEntryFor } from './history.js'
 import { nextPrescription } from './progression.js'
@@ -17,6 +18,19 @@ const work = (w, r, done = true) => ({ w, r, done })
 const warm = (w, r) => ({ w, r, done: true, phase: 'warmup' })
 
 describe('exerciseHistory', () => {
+  it('keeps seated and incline neutral-grip front raises in separate histories', () => {
+    const seated = '90001', incline = '90002'
+    const S = { workouts: [
+      session(0, [work(8, 12)], { id: seated }),
+      session(1, [work(6, 10)], { id: incline }),
+      session(2, [work(14, 12)], { id: '0392' }),
+    ] }
+    expect(canonicalExId(seated)).toBe(seated)
+    expect(canonicalExId(incline)).toBe(incline)
+    expect(exerciseHistory(S, seated)).toMatchObject({ best: 8, prId: 'w0', total: 1 })
+    expect(exerciseHistory(S, incline)).toMatchObject({ best: 6, prId: 'w1', total: 1 })
+  })
+
   it('puts Best and PR on the least help on an assistance machine', () => {
     const id = EXDB.find(e => e.eq === 'leverage machine' && /assist/i.test(e.n)).id
     const S = { workouts: [60, 50, 40].map((w, i) => ({ id: 'a' + i, d: iso(i), start: T0 + i * DAY,
